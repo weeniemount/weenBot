@@ -4,7 +4,7 @@
   "main": "src/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "cd src/ && node deploy-commands.js && node index.js"
+    "start": "cd src/ && node deploy-commands.js && pm2 start index.js --name weenbot --watch --no-daemon --restart-delay 5000"
   },
   "keywords": [],
   "author": "",
