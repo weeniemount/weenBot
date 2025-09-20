@@ -3,6 +3,11 @@ const fs = require('node:fs');
 dotenv = require('dotenv');
 dotenv.config();
 
+// express server to keep render and similar services happy
+const express = require('express');
+const app = express();
+const PORT = process.env.PORT || 3000;
+
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 client.commands = new Collection();
 
@@ -33,3 +38,11 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(process.env.TOKEN);
+
+app.get('/', (req, res) => {
+  res.send('weenBot is alive!');
+});
+
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
