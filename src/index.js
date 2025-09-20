@@ -19,8 +19,27 @@ for (const file of commandFiles) {
 }
 
 client.once('ready', () => {
-  console.log('Bot is online!');
+	console.log('weenBot is ready!');
+
+	updatePresence();
+
+	setInterval(updatePresence, 10 * 60 * 1000);
 });
+
+function updatePresence() {
+	client.user.setPresence({
+		activities: [
+			{
+				name: `weenieng in ${client.guilds.cache.size} servers`,
+				type: 3 // WATCHING
+			}
+		],
+		status: 'online'
+	});
+}
+
+client.on('guildCreate', () => updatePresence());
+client.on('guildDelete', () => updatePresence());
 
 client.on('interactionCreate', async interaction => {
   if (!interaction.isCommand()) return;
