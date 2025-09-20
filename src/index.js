@@ -30,7 +30,7 @@ function updatePresence() {
 	client.user.setPresence({
 		activities: [
 			{
-				name: `weenieng in ${client.guilds.cache.size} servers`,
+				name: `over ${client.guilds.cache.size} ween™ servers!`,
 				type: 3 // WATCHING
 			}
 		],
