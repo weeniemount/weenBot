@@ -41,6 +41,7 @@ client.login(process.env.TOKEN);
 
 app.get('/', (req, res) => {
   res.send('weenBot is alive!');
+  console.log("ping!")
 });
 
 app.listen(PORT, () => {
