@@ -140,10 +140,7 @@ module.exports = {
                     const updatedEmbed = new EmbedBuilder()
                         .setTitle('⚙️ weenBot settings')
                         .setDescription('customize your weenBot experience below')
-                        .setColor(updatedSettings.button_color === 'Primary' ? 0x5865F2 : 
-                                 updatedSettings.button_color === 'Secondary' ? 0x4F545C :
-                                 updatedSettings.button_color === 'Success' ? 0x57F287 :
-                                 updatedSettings.button_color === 'Danger' ? 0xED4245 : 0x5865F2)
+                        .setColor(0xb03000)
                         .addFields(
                             {
                                 name: '🔔 Bot Pings',
