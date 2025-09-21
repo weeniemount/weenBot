@@ -1,7 +1,7 @@
 const { Client, GatewayIntentBits, Collection } = require('discord.js');
 const fs = require('node:fs');
 const dotenv = require('dotenv');
-const { initializeDB, getWeenSpeakChannels } = require('./modules/db.js');
+const { initializeDB, getWeenSpeakChannels, incrementCommandsRun } = require('./modules/db.js');
 const { handleWeenSpeakMessage } = require('./modules/weenspeak.js');
 dotenv.config();
 
@@ -69,8 +69,9 @@ client.on('interactionCreate', async interaction => {
     }
 
     try {
+        await incrementCommandsRun();
         await command.execute(interaction);
-        
+
         if (interaction.commandName === 'weenspeak') {
             const channels = await getWeenSpeakChannels();
             weenspeakChannels = new Set(channels);

@@ -12,6 +12,7 @@ CREATE TABLE user_settings (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+CREATE TABLE weenbotinfo (commandsran INTEGER PRIMARY KEY DEFAULT 0)
 
 okay thank you for coming to my WEEN talk
 */
@@ -288,6 +289,73 @@ async function checkUserAllowsPings(userId) {
     }
 }
 
+async function incrementCommandsRun() {
+	if (!supabase) {
+		console.log('Supabase client not initialized, attempting to initialize...');
+		initializeSupabase();
+		if (!supabase) {
+			throw new Error('Supabase not initialized');
+		}
+	}
+
+	try {
+		const { data: currentData, error: fetchError } = await supabase
+			.from('weenbotinfo')
+			.select('commandsran')
+			.single();
+
+		if (fetchError && fetchError.code !== 'PGRST116') {
+			throw fetchError;
+		}
+
+		const currentCount = currentData ? currentData.commandsran : 0;
+		const newCount = currentCount + 1;
+
+		const { data, error } = await supabase
+			.from('weenbotinfo')
+			.upsert([{ commandsran: newCount }])
+			.select()
+			.single();
+
+		if (error) {
+			throw error;
+		}
+
+		console.log(`Commands run updated: ${newCount}`);
+		return newCount;
+	} catch (err) {
+		console.error('Error incrementing commands run:', err);
+		throw err;
+	}
+}
+
+async function getCommandsRun() {
+	if (!supabase) {
+		console.log('Supabase client not initialized, attempting to initialize...');
+		initializeSupabase();
+		if (!supabase) {
+			throw new Error('Supabase not initialized');
+		}
+	}
+
+	try {
+		const { data, error } = await supabase
+			.from('weenbotinfo')
+			.select('commandsran')
+			.single();
+
+		if (error && error.code !== 'PGRST116') {
+			throw error;
+		}
+
+		return data ? data.commandsran : 0;
+	} catch (err) {
+		console.error('Error getting commands run:', err);
+		return 0;
+	}
+}
+
+
 module.exports = {
     db: supabase,
     addWeenSpeakChannel,
@@ -299,5 +367,7 @@ module.exports = {
     resetButtonCount,
     getUserSettings,
     updateUserSettings,
-    checkUserAllowsPings
+    checkUserAllowsPings,
+    incrementCommandsRun,
+    getCommandsRun
 };
