@@ -7,6 +7,8 @@ async function handleWeenSpeakMessage(message) {
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
     try {
+        await message.channel.sendTyping();
+
         const messageHistory = await getMessageHistory(message.channel, 20);
         
         const contents = [];
@@ -63,6 +65,7 @@ async function handleWeenSpeakMessage(message) {
             const chunks = outputText.match(/[\s\S]{1,1900}/g);
             await message.reply(chunks[0]);
             for (let i = 1; i < chunks.length; i++) {
+                await message.channel.sendTyping();
                 await message.channel.send(chunks[i]);
             }
         } else {
