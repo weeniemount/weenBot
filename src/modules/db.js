@@ -313,16 +313,24 @@ async function incrementCommandsRun() {
 
 		const { data, error } = await supabase
 			.from('weenbotinfo')
-			.upsert([{ commandsran: newCount }])
-			.select()
+			.update({ commandsran: newCount })
+			.eq('commandsran', currentCount)
+			.select('commandsran')
 			.single();
 
-		if (error) {
-			throw error;
+		if ((error && error.code === 'PGRST116') || !data) {
+			const { data: inserted, error: insertError } = await supabase
+				.from('weenbotinfo')
+				.insert([{ commandsran: newCount }])
+				.select('commandsran')
+				.single();
+
+			if (insertError) throw insertError;
+			return inserted.commandsran;
 		}
 
-		console.log(`Commands run updated: ${newCount}`);
-		return newCount;
+		if (error) throw error;
+		return data.commandsran;
 	} catch (err) {
 		console.error('Error incrementing commands run:', err);
 		throw err;
@@ -344,17 +352,17 @@ async function getCommandsRun() {
 			.select('commandsran')
 			.single();
 
-		if (error && error.code !== 'PGRST116') {
-			throw error;
+		if (error && error.code === 'PGRST116') {
+			return 0;
 		}
 
-		return data ? data.commandsran : 0;
+		if (error) throw error;
+		return data.commandsran;
 	} catch (err) {
 		console.error('Error getting commands run:', err);
 		return 0;
 	}
 }
-
 
 module.exports = {
     db: supabase,
