@@ -14,6 +14,26 @@ CREATE TABLE user_settings (
 );
 CREATE TABLE weenbotinfo (commandsran INTEGER PRIMARY KEY DEFAULT 0)
 
+-- FUNCTION FOR INCREMENTING!!
+CREATE OR REPLACE FUNCTION increment_commands_run()
+RETURNS INTEGER AS $$
+DECLARE
+    new_count INTEGER;
+BEGIN
+    UPDATE weenbotinfo 
+    SET commandsran = COALESCE(commandsran, 0) + 1
+    RETURNING commandsran INTO new_count;
+    
+    IF NOT FOUND THEN
+        INSERT INTO weenbotinfo (commandsran) VALUES (1)
+        RETURNING commandsran INTO new_count;
+    END IF;
+    
+    RETURN new_count;
+END;
+$$ LANGUAGE plpgsql;
+-- end of function lol
+
 okay thank you for coming to my WEEN talk
 */
 
@@ -299,35 +319,11 @@ async function incrementCommandsRun() {
 	}
 
 	try {
-		const { data: currentData } = await supabase
-			.from('weenbotinfo')
-			.select('commandsran')
-			.limit(1)
-			.single();
+		const { data, error } = await supabase
+			.rpc('increment_commands_run');
 
-		const currentCount = currentData ? currentData.commandsran : 0;
-		const newCount = currentCount + 1;
-
-		if (currentData) {
-			const { data, error } = await supabase
-				.from('weenbotinfo')
-				.update({ commandsran: newCount })
-				.limit(1)
-				.select('commandsran')
-				.single();
-
-			if (error) throw error;
-			return data.commandsran;
-		} else {
-			const { data, error } = await supabase
-				.from('weenbotinfo')
-				.insert([{ commandsran: newCount }])
-				.select('commandsran')
-				.single();
-
-			if (error) throw error;
-			return data.commandsran;
-		}
+		if (error) throw error;
+		return data;
 	} catch (err) {
 		console.error('Error incrementing commands run:', err);
 		throw err;
