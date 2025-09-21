@@ -5,6 +5,13 @@ these are the queries that you NEED to run to setup the database for the bot!
 
 CREATE TABLE weenspeakchannelids (id SERIAL PRIMARY KEY, channel_id TEXT UNIQUE NOT NULL);
 CREATE TABLE personalbuttons (user_id TEXT PRIMARY KEY, count INTEGER DEFAULT 0);
+CREATE TABLE user_settings (
+    user_id TEXT PRIMARY KEY,
+    allow_pings BOOLEAN DEFAULT true,
+    button_color TEXT DEFAULT 'Primary',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 
 okay thank you for coming to my WEEN talk
 */
@@ -191,6 +198,96 @@ async function resetButtonCount(userId) {
         throw err;
     }
 }
+
+async function getUserSettings(userId) {
+    if (!supabase) {
+        console.log('Supabase client not initialized, attempting to initialize...');
+        initializeSupabase();
+        if (!supabase) {
+            throw new Error('Supabase not initialized');
+        }
+    }
+    
+    try {
+        const { data: settingsData, error: settingsError } = await supabase
+            .from('user_settings')
+            .select('*')
+            .eq('user_id', userId)
+            .single();
+        
+        const buttonCount = await getButtonCount(userId);
+        
+        if (settingsError && settingsError.code === 'PGRST116') {
+            return {
+                user_id: userId,
+                allow_pings: true,
+                button_color: 'Primary',
+                button_count: buttonCount
+            };
+        }
+        
+        if (settingsError) {
+            throw settingsError;
+        }
+        
+        return {
+            ...settingsData,
+            button_count: buttonCount
+        };
+    } catch (err) {
+        console.error('Error getting user settings:', err);
+        return {
+            user_id: userId,
+            allow_pings: true,
+            button_color: 'Primary',
+            button_count: 0
+        };
+    }
+}
+
+async function updateUserSettings(userId, settings) {
+    if (!supabase) {
+        console.log('Supabase client not initialized, attempting to initialize...');
+        initializeSupabase();
+        if (!supabase) {
+            throw new Error('Supabase not initialized');
+        }
+    }
+    
+    try {
+        const updateData = {
+            user_id: userId,
+            updated_at: new Date().toISOString(),
+            ...settings
+        };
+        
+        const { data, error } = await supabase
+            .from('user_settings')
+            .upsert([updateData])
+            .select()
+            .single();
+        
+        if (error) {
+            throw error;
+        }
+        
+        return data;
+    } catch (err) {
+        console.error('Error updating user settings:', err);
+        throw err;
+    }
+}
+
+async function checkUserAllowsPings(userId) {
+    try {
+        const settings = await getUserSettings(userId);
+        return settings.allow_pings;
+    } catch (err) {
+        console.error('Error checking user ping settings:', err);
+        return true;
+    }
+}
+
 module.exports = {
     db: supabase,
     addWeenSpeakChannel,
@@ -199,5 +296,8 @@ module.exports = {
     initializeDB,
     getButtonCount,
     updateButtonCount,
-    resetButtonCount
+    resetButtonCount,
+    getUserSettings,
+    updateUserSettings,
+    checkUserAllowsPings
 };

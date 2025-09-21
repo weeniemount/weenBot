@@ -1,4 +1,5 @@
 const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { checkUserAllowsPings } = require('../modules/db.js');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -12,6 +13,14 @@ module.exports = {
 		const opponent = interaction.options.getUser('opponent');
 		const playerX = interaction.user;
 		const playerO = opponent;
+
+		// Check ping settings for both players
+		const [playerXAllowsPings, playerOAllowsPings] = await Promise.all([
+			checkUserAllowsPings(playerX.id),
+			checkUserAllowsPings(playerO.id)
+		]);
+
+		const formatPlayer = (player, allowsPings) => allowsPings ? `${player}` : player.username;
 
 		let board = Array(9).fill(null);
 		const symbols = { [playerX.id]: '❌', [playerO.id]: '⭕' };
@@ -93,7 +102,7 @@ module.exports = {
 
 
 		const message = await interaction.reply({
-			content: `tic tac toe: ${playerX} (❌) vs ${playerO} (⭕)\nit's ${currentPlayer}'s turn`,
+			content: `tic tac toe: ${formatPlayer(playerX, playerXAllowsPings)} (❌) vs ${formatPlayer(playerO, playerOAllowsPings)} (⭕)\nit's ${formatPlayer(currentPlayer, currentPlayer.id === playerX.id ? playerXAllowsPings : playerOAllowsPings)}'s turn`,
 			components: generateButtons(),
 			fetchReply: true
 		});
@@ -113,7 +122,10 @@ module.exports = {
 			board[idx] = symbols[currentPlayer.id];
 
 			if (checkWin(symbols[currentPlayer.id])) {
-				await i.update({ content: `${currentPlayer} won!`, components: generateButtons() });
+				await i.update({ 
+					content: `${formatPlayer(currentPlayer, currentPlayer.id === playerX.id ? playerXAllowsPings : playerOAllowsPings)} won!`, 
+					components: generateButtons() 
+				});
 				collector.stop();
 				return;
 			}
@@ -125,7 +137,10 @@ module.exports = {
 			}
 
 			currentPlayer = currentPlayer.id === playerX.id ? playerO : playerX;
-			await i.update({ content: `tic tac toe: ${playerX} (❌) vs ${playerO} (⭕)\nit's ${currentPlayer}'s turn`, components: generateButtons() });
+			await i.update({ 
+				content: `tic tac toe: ${formatPlayer(playerX, playerXAllowsPings)} (❌) vs ${formatPlayer(playerO, playerOAllowsPings)} (⭕)\nit's ${formatPlayer(currentPlayer, currentPlayer.id === playerX.id ? playerXAllowsPings : playerOAllowsPings)}'s turn`, 
+				components: generateButtons() 
+			});
 
 			if (currentPlayer.id === interaction.client.user.id) {
 				setTimeout(makeAIMove, 1000);

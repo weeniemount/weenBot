@@ -1,4 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { checkUserAllowsPings } = require('../modules/db.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -9,7 +10,10 @@ module.exports = {
         .setDescription('the user to nuke')
         .setRequired(true)),
   async execute(interaction) {
-    await interaction.reply(`${interaction.options.getUser('target')} prepare to get nuked`);
+    const target = interaction.options.getUser('target');
+    const allowsPings = await checkUserAllowsPings(target.id);
+    const targetDisplay = allowsPings ? `${target}` : target.username;
+    await interaction.reply(`${targetDisplay} prepare to get nuked`);
     setTimeout(async function(){
         await interaction.followUp(`3`);
     }, 2000);

@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const { getButtonCount, updateButtonCount, resetButtonCount } = require('../modules/db.js');
+const { getButtonCount, updateButtonCount, resetButtonCount, getUserSettings } = require('../modules/db.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -35,12 +35,23 @@ module.exports = {
             }
         } else {
             try {
-                const count = await getButtonCount(userId);
+                const settings = await getUserSettings(userId);
+                const count = settings.button_count || 0;
+                
+                const getButtonStyle = (colorString) => {
+                    switch (colorString) {
+                        case 'Primary': return ButtonStyle.Primary;
+                        case 'Secondary': return ButtonStyle.Secondary;
+                        case 'Success': return ButtonStyle.Success;
+                        case 'Danger': return ButtonStyle.Danger;
+                        default: return ButtonStyle.Primary;
+                    }
+                };
                 
                 const button = new ButtonBuilder()
                     .setCustomId('personal_button_click')
                     .setLabel(count.toString())
-                    .setStyle(ButtonStyle.Primary);
+                    .setStyle(getButtonStyle(settings.button_color));
 
                 const row = new ActionRowBuilder()
                     .addComponents(button);
@@ -60,10 +71,12 @@ module.exports = {
                         try {
                             const newCount = await updateButtonCount(userId);
                             
+                            const updatedSettings = await getUserSettings(userId);
+                            
                             const updatedButton = new ButtonBuilder()
                                 .setCustomId('personal_button_click')
                                 .setLabel(newCount.toString())
-                                .setStyle(ButtonStyle.Primary);
+                                .setStyle(getButtonStyle(updatedSettings.button_color));
 
                             const updatedRow = new ActionRowBuilder()
                                 .addComponents(updatedButton);

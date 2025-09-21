@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
-const { addWeenSpeakChannel, removeWeenSpeakChannel } = require('../modules/db.js');
+const { addWeenSpeakChannel, removeWeenSpeakChannel, checkUserAllowsPings } = require('../modules/db.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -33,17 +33,31 @@ module.exports = {
         const subcommand = interaction.options.getSubcommand();
         const channel = interaction.options.getChannel('channel');
 
+        const userAllowsPings = await checkUserAllowsPings(interaction.user.id);
+        const replyOptions = {
+            ephemeral: !userAllowsPings
+        };
+
         if (subcommand === 'add') {
             try {
                 await addWeenSpeakChannel(channel.id);
-                await interaction.reply(`successfully added ${channel} as a weenspeak channel!`);
+                await interaction.reply({ 
+                    content: `successfully added ${channel} as a weenspeak channel!`,
+                    ...replyOptions
+                });
                 console.log(`added ${channel.id} to weenspeak channels`);
             } catch (error) {
                 if (error.message.includes('already a weenspeak channel')) {
-                    await interaction.reply(`${channel} is already a weenspeak channel!`);
+                    await interaction.reply({ 
+                        content: `${channel} is already a weenspeak channel!`,
+                        ...replyOptions
+                    });
                 } else {
                     console.error('error adding weenspeak channel:', error);
-                    await interaction.reply('an error occurred while adding the weenspeak channel srry man');
+                    await interaction.reply({
+                        content: 'an error occurred while adding the weenspeak channel srry man',
+                        ...replyOptions
+                    });
                 }
                 console.log(`failed to add ${channel.id} to weenspeak channels`);
             }
@@ -51,13 +65,22 @@ module.exports = {
             try {
                 const removed = await removeWeenSpeakChannel(channel.id);
                 if (removed) {
-                    await interaction.reply(`removed ${channel} from weenspeak channels!`);
+                    await interaction.reply({
+                        content: `removed ${channel} from weenspeak channels!`,
+                        ...replyOptions
+                    });
                 } else {
-                    await interaction.reply(`${channel} was never a weenspeak channel in the first place dude.`);
+                    await interaction.reply({
+                        content: `${channel} was never a weenspeak channel in the first place dude.`,
+                        ...replyOptions
+                    });
                 }
             } catch (error) {
                 console.error('error removing weenspeak channel:', error);
-                await interaction.reply('an error occurred while removing the weenspeak channel srry man');
+                await interaction.reply({
+                    content: 'an error occurred while removing the weenspeak channel srry man',
+                    ...replyOptions
+                });
             }
         }
     }
