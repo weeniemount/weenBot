@@ -23,9 +23,7 @@ const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('
 
 for (const file of commandFiles) {
   try {
-    console.log(`Loading command: ${file}`);
     const command = require(`./commands/${file}`);
-    console.log(`Successfully loaded command: ${command.data.name}`);
     client.commands.set(command.data.name, command);
   } catch (error) {
     console.error(`Error loading command ${file}:`, error);
@@ -63,9 +61,6 @@ client.on('guildDelete', () => updatePresence());
 client.on('interactionCreate', async interaction => {
     if (!interaction.isCommand()) return;
 
-    console.log(`Command received: ${interaction.commandName}`);
-    console.log(`Available commands: ${Array.from(client.commands.keys()).join(', ')}`);
-
     const command = client.commands.get(interaction.commandName);
 
     if (!command) {
@@ -74,7 +69,6 @@ client.on('interactionCreate', async interaction => {
     }
 
     try {
-        console.log(`Executing command: ${interaction.commandName}`);
         await command.execute(interaction);
         
         if (interaction.commandName === 'weenspeak') {
