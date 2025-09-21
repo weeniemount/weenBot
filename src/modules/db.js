@@ -12,7 +12,10 @@ CREATE TABLE user_settings (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
-CREATE TABLE weenbotinfo (commandsran INTEGER PRIMARY KEY DEFAULT 0)
+CREATE TABLE weenbotinfo (
+    id SERIAL PRIMARY KEY,
+    commandsran INTEGER DEFAULT 0
+);
 
 -- FUNCTION FOR INCREMENTING!!
 CREATE OR REPLACE FUNCTION increment_commands_run()
@@ -310,52 +313,95 @@ async function checkUserAllowsPings(userId) {
 }
 
 async function incrementCommandsRun() {
-	if (!supabase) {
-		console.log('Supabase client not initialized, attempting to initialize...');
-		initializeSupabase();
-		if (!supabase) {
-			throw new Error('Supabase not initialized');
-		}
-	}
+    if (!supabase) {
+        console.log('Supabase client not initialized, attempting to initialize...');
+        initializeSupabase();
+        if (!supabase) {
+            throw new Error('Supabase not initialized');
+        }
+    }
 
-	try {
-		const { data, error } = await supabase
-			.rpc('increment_commands_run');
+    try {
+        console.log('Attempting to increment commands run...');
+        
+        // First try using the stored function
+        const { data, error } = await supabase
+            .rpc('increment_commands_run');
 
-		if (error) throw error;
-		return data;
-	} catch (err) {
-		console.error('Error incrementing commands run:', err);
-		throw err;
-	}
+        if (error) {
+            console.error('Error calling increment_commands_run function:', error);
+            
+            // Fallback: Try direct table manipulation
+            console.log('Attempting fallback method...');
+            const { data: currentData, error: selectError } = await supabase
+                .from('weenbotinfo')
+                .select('commandsran')
+                .limit(1)
+                .single();
+            
+            if (selectError && selectError.code !== 'PGRST116') {
+                throw selectError;
+            }
+            
+            const currentCount = currentData ? currentData.commandsran : 0;
+            const newCount = currentCount + 1;
+            
+            const { data: updateData, error: upsertError } = await supabase
+                .from('weenbotinfo')
+                .upsert([{ commandsran: newCount }])
+                .select('commandsran')
+                .single();
+            
+            if (upsertError) {
+                throw upsertError;
+            }
+            
+            console.log('Successfully incremented commands run (fallback):', updateData.commandsran);
+            return updateData.commandsran;
+        }
+        
+        console.log('Successfully incremented commands run:', data);
+        return data;
+    } catch (err) {
+        console.error('Error incrementing commands run:', err);
+        throw err;
+    }
 }
 
 async function getCommandsRun() {
-	if (!supabase) {
-		console.log('Supabase client not initialized, attempting to initialize...');
-		initializeSupabase();
-		if (!supabase) {
-			throw new Error('Supabase not initialized');
-		}
-	}
+    if (!supabase) {
+        console.log('Supabase client not initialized, attempting to initialize...');
+        initializeSupabase();
+        if (!supabase) {
+            throw new Error('Supabase not initialized');
+        }
+    }
 
-	try {
-		const { data, error } = await supabase
-			.from('weenbotinfo')
-			.select('commandsran')
-			.limit(1)
-			.single();
+    try {
+        console.log('Fetching commands run count...');
+        const { data, error } = await supabase
+            .from('weenbotinfo')
+            .select('commandsran')
+            .limit(1)
+            .single();
 
-		if (error && error.code === 'PGRST116') {
-			return 0;
-		}
+        if (error && error.code === 'PGRST116') {
+            console.log('No data found in weenbotinfo table, returning 0');
+            return 0;
+        }
 
-		if (error) throw error;
-		return data.commandsran || 0;
-	} catch (err) {
-		console.error('Error getting commands run:', err);
-		return 0;
-	}
+        if (error) {
+            console.error('Error fetching commands run:', error);
+            throw error;
+        }
+
+        const count = data.commandsran || 0;
+        console.log('Commands run count:', count);
+        return count;
+    } catch (err) {
+        console.error('Error getting commands run:', err);
+        return 0;
+    }
 }
 
 module.exports = {
