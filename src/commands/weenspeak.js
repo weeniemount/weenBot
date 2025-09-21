@@ -4,7 +4,7 @@ const { addWeenSpeakChannel, removeWeenSpeakChannel, checkUserAllowsPings } = re
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('weenspeak')
-        .setDescription('Manage weenspeak channels')
+        .setDescription('manage weenspeak channels')
         .addSubcommand(subcommand =>
             subcommand
                 .setName('add')

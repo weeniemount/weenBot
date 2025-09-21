@@ -4,10 +4,10 @@ const { checkUserAllowsPings } = require('../modules/db.js');
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('tictactoe')
-		.setDescription('Play tic tac toe with someone lol')
+		.setDescription('play tic tac toe with someone lol')
 		.addUserOption(option =>
 			option.setName('opponent')
-				.setDescription('The challenger')
+				.setDescription('the challenger')
 				.setRequired(true)),
 	async execute(interaction) {
 		const opponent = interaction.options.getUser('opponent');

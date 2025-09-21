@@ -11,14 +11,14 @@ const PERSONALITIES = {
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('gemini')
-		.setDescription('Ask Gemini something')
+		.setDescription('ask gemini smth dumb')
 		.addStringOption(option =>
 			option.setName('prompt')
-				.setDescription('Your question for Gemini')
+				.setDescription('prompt, obviously')
 				.setRequired(true))
 		.addStringOption(option =>
 			option.setName('personality')
-				.setDescription('Choose a personality')
+				.setDescription('choose a personality')
 				.setRequired(false)
 				.addChoices(
 					{ name: 'Default', value: 'default' },
