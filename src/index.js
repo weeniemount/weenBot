@@ -70,7 +70,7 @@ client.on('interactionCreate', async interaction => {
 
     try {
         await command.execute(interaction);
-        await incrementCommandsRun();
+        //await incrementCommandsRun();
 
         if (interaction.commandName === 'weenspeak') {
             const channels = await getWeenSpeakChannels();
