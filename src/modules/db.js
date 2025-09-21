@@ -13,29 +13,11 @@ CREATE TABLE user_settings (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 CREATE TABLE weenbotinfo (
-    id SERIAL PRIMARY KEY,
-    commandsran INTEGER DEFAULT 0
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    commands_run INTEGER DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
-
--- FUNCTION FOR INCREMENTING!!
-CREATE OR REPLACE FUNCTION increment_commands_run()
-RETURNS INTEGER AS $$
-DECLARE
-    new_count INTEGER;
-BEGIN
-    UPDATE weenbotinfo 
-    SET commandsran = COALESCE(commandsran, 0) + 1
-    RETURNING commandsran INTO new_count;
-    
-    IF NOT FOUND THEN
-        INSERT INTO weenbotinfo (commandsran) VALUES (1)
-        RETURNING commandsran INTO new_count;
-    END IF;
-    
-    RETURN new_count;
-END;
-$$ LANGUAGE plpgsql;
--- end of function lol
 
 okay thank you for coming to my WEEN talk
 */
@@ -320,48 +302,34 @@ async function incrementCommandsRun() {
             throw new Error('Supabase not initialized');
         }
     }
-
+    
     try {
-        console.log('Attempting to increment commands run...');
+        const { data: existingData, error: fetchError } = await supabase
+            .from('weenbotinfo')
+            .select('commands_run')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
         
-        // First try using the stored function
-        const { data, error } = await supabase
-            .rpc('increment_commands_run');
-
-        if (error) {
-            console.error('Error calling increment_commands_run function:', error);
-            
-            // Fallback: Try direct table manipulation
-            console.log('Attempting fallback method...');
-            const { data: currentData, error: selectError } = await supabase
-                .from('weenbotinfo')
-                .select('commandsran')
-                .limit(1)
-                .single();
-            
-            if (selectError && selectError.code !== 'PGRST116') {
-                throw selectError;
-            }
-            
-            const currentCount = currentData ? currentData.commandsran : 0;
-            const newCount = currentCount + 1;
-            
-            const { data: updateData, error: upsertError } = await supabase
-                .from('weenbotinfo')
-                .upsert([{ commandsran: newCount }])
-                .select('commandsran')
-                .single();
-            
-            if (upsertError) {
-                throw upsertError;
-            }
-            
-            console.log('Successfully incremented commands run (fallback):', updateData.commandsran);
-            return updateData.commandsran;
+        let newCount = 1;
+        if (!fetchError && existingData) {
+            newCount = existingData.commands_run + 1;
         }
         
-        console.log('Successfully incremented commands run:', data);
-        return data;
+        const { data, error } = await supabase
+            .from('weenbotinfo')
+            .insert([{ 
+                commands_run: newCount,
+                updated_at: new Date().toISOString()
+            }])
+            .select()
+            .single();
+        
+        if (error) {
+            throw error;
+        }
+        
+        return newCount;
     } catch (err) {
         console.error('Error incrementing commands run:', err);
         throw err;
@@ -376,28 +344,20 @@ async function getCommandsRun() {
             throw new Error('Supabase not initialized');
         }
     }
-
+    
     try {
-        console.log('Fetching commands run count...');
         const { data, error } = await supabase
             .from('weenbotinfo')
-            .select('commandsran')
+            .select('commands_run')
+            .order('created_at', { ascending: false })
             .limit(1)
             .single();
-
-        if (error && error.code === 'PGRST116') {
-            console.log('No data found in weenbotinfo table, returning 0');
-            return 0;
-        }
-
-        if (error) {
-            console.error('Error fetching commands run:', error);
+        
+        if (error && error.code !== 'PGRST116') {
             throw error;
         }
-
-        const count = data.commandsran || 0;
-        console.log('Commands run count:', count);
-        return count;
+        
+        return data ? data.commands_run : 0;
     } catch (err) {
         console.error('Error getting commands run:', err);
         return 0;
