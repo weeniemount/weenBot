@@ -8,15 +8,18 @@ module.exports = {
         .addSubcommand(subcommand =>
             subcommand
                 .setName('show')
-                .setDescription('show your personal button'))
+                .setDescription('show your personal button')
                 .addBooleanOption(option =>
                     option.setName('ephemeral')
                         .setDescription('button only meant for your eyes!')
-                        .setRequired(false))
+                        .setRequired(false)
+                )
+        )
         .addSubcommand(subcommand =>
             subcommand
                 .setName('reset')
-                .setDescription('remove your count....')),
+                .setDescription('remove your count....')
+        ),
 
     async execute(interaction) {
         const subcommand = interaction.options.getSubcommand();
