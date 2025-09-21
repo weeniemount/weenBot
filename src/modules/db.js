@@ -299,38 +299,35 @@ async function incrementCommandsRun() {
 	}
 
 	try {
-		const { data: currentData, error: fetchError } = await supabase
+		const { data: currentData } = await supabase
 			.from('weenbotinfo')
 			.select('commandsran')
+			.limit(1)
 			.single();
-
-		if (fetchError && fetchError.code !== 'PGRST116') {
-			throw fetchError;
-		}
 
 		const currentCount = currentData ? currentData.commandsran : 0;
 		const newCount = currentCount + 1;
 
-		const { data, error } = await supabase
-			.from('weenbotinfo')
-			.update({ commandsran: newCount })
-			.eq('commandsran', currentCount)
-			.select('commandsran')
-			.single();
+		if (currentData) {
+			const { data, error } = await supabase
+				.from('weenbotinfo')
+				.update({ commandsran: newCount })
+				.limit(1)
+				.select('commandsran')
+				.single();
 
-		if ((error && error.code === 'PGRST116') || !data) {
-			const { data: inserted, error: insertError } = await supabase
+			if (error) throw error;
+			return data.commandsran;
+		} else {
+			const { data, error } = await supabase
 				.from('weenbotinfo')
 				.insert([{ commandsran: newCount }])
 				.select('commandsran')
 				.single();
 
-			if (insertError) throw insertError;
-			return inserted.commandsran;
+			if (error) throw error;
+			return data.commandsran;
 		}
-
-		if (error) throw error;
-		return data.commandsran;
 	} catch (err) {
 		console.error('Error incrementing commands run:', err);
 		throw err;
@@ -350,6 +347,7 @@ async function getCommandsRun() {
 		const { data, error } = await supabase
 			.from('weenbotinfo')
 			.select('commandsran')
+			.limit(1)
 			.single();
 
 		if (error && error.code === 'PGRST116') {
@@ -357,7 +355,7 @@ async function getCommandsRun() {
 		}
 
 		if (error) throw error;
-		return data.commandsran;
+		return data.commandsran || 0;
 	} catch (err) {
 		console.error('Error getting commands run:', err);
 		return 0;
