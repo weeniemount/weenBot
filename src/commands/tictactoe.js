@@ -98,7 +98,7 @@ module.exports = {
 			fetchReply: true
 		});
 
-		const collector = message.createMessageComponentCollector({ time: 600000 });
+		const collector = message.createMessageComponentCollector();
 
 		if (currentPlayer.id === interaction.client.user.id || currentPlayer.id === process.env.BOT_ID) {
 			setTimeout(makeAIMove, 1000);
