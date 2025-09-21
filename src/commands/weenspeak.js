@@ -21,9 +21,12 @@ module.exports = {
                     option.setName('channel')
                         .setDescription('the channel to remove')
                         .setRequired(true)))
-        .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     async execute(interaction) {
+        if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+            return message.reply('no.');
+        }
         console.log("the command /weenspeak was run");
         if (!process.env.GEMINI_API_KEY) {
             return interaction.reply("the bot's gemini api key isnt setup! if you are the owner of the bot, set it in your .env file to use weenspeak functionality");
