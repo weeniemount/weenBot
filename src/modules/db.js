@@ -4,7 +4,15 @@ if you are setting up the bot i probably told you to go here from the README.md
 these are the queries that you NEED to run to setup the database for the bot!
 
 CREATE TABLE weenspeakchannelids (id SERIAL PRIMARY KEY, channel_id TEXT UNIQUE NOT NULL);
-CREATE TABLE personalbuttons (user_id TEXT PRIMARY KEY, count INTEGER DEFAULT 0);
+CREATE TABLE buttons (
+    id SERIAL PRIMARY KEY,
+    button_type TEXT NOT NULL CHECK (button_type IN ('personal', 'server', 'global')),
+    reference_id TEXT NOT NULL, -- user_id for personal, server_id for server, 'global' for global
+    count INTEGER DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(button_type, reference_id)
+);
 CREATE TABLE user_settings (
     user_id TEXT PRIMARY KEY,
     allow_pings BOOLEAN DEFAULT true,
@@ -18,6 +26,13 @@ CREATE TABLE weenbotinfo (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+CREATE INDEX idx_buttons_type_ref ON buttons(button_type, reference_id);
+CREATE INDEX idx_buttons_updated ON buttons(updated_at);
+
+INSERT INTO buttons (button_type, reference_id, count) 
+VALUES ('global', 'global', 0) 
+ON CONFLICT (button_type, reference_id) DO NOTHING;
 
 okay thank you for coming to my WEEN talk
 */
@@ -118,11 +133,16 @@ async function initializeDB() {
     const client = initializeSupabase();
     if (client) {
         console.log('Database initialized');
+        try {
+            await getButtonCount('global', 'global');
+        } catch (err) {
+            console.log('Creating global button record...');
+        }
     }
     return client;
 }
 
-async function getButtonCount(userId) {
+async function getButtonCount(buttonType, referenceId) {
     if (!supabase) {
         console.log('Supabase client not initialized, attempting to initialize...');
         initializeSupabase();
@@ -133,9 +153,10 @@ async function getButtonCount(userId) {
     
     try {
         const { data, error } = await supabase
-            .from('personalbuttons')
+            .from('buttons')
             .select('count')
-            .eq('user_id', userId)
+            .eq('button_type', buttonType)
+            .eq('reference_id', referenceId)
             .single();
         
         if (error && error.code !== 'PGRST116') {
@@ -149,7 +170,7 @@ async function getButtonCount(userId) {
     }
 }
 
-async function updateButtonCount(userId) {
+async function updateButtonCount(buttonType, referenceId) {
     if (!supabase) {
         console.log('Supabase client not initialized, attempting to initialize...');
         initializeSupabase();
@@ -159,12 +180,30 @@ async function updateButtonCount(userId) {
     }
     
     try {
-        const currentCount = await getButtonCount(userId);
+        const { data: existingData, error: fetchError } = await supabase
+            .from('buttons')
+            .select('count')
+            .eq('button_type', buttonType)
+            .eq('reference_id', referenceId)
+            .single();
+        
+        let currentCount = 0;
+        if (!fetchError && existingData) {
+            currentCount = existingData.count;
+        }
+        
         const newCount = currentCount + 1;
         
         const { data, error } = await supabase
-            .from('personalbuttons')
-            .upsert([{ user_id: userId, count: newCount }])
+            .from('buttons')
+            .upsert([{ 
+                button_type: buttonType, 
+                reference_id: referenceId, 
+                count: newCount,
+                updated_at: new Date().toISOString()
+            }], {
+                onConflict: 'button_type,reference_id'
+            })
             .select()
             .single();
         
@@ -179,7 +218,7 @@ async function updateButtonCount(userId) {
     }
 }
 
-async function resetButtonCount(userId) {
+async function resetButtonCount(buttonType, referenceId) {
     if (!supabase) {
         console.log('Supabase client not initialized, attempting to initialize...');
         initializeSupabase();
@@ -190,8 +229,15 @@ async function resetButtonCount(userId) {
     
     try {
         const { data, error } = await supabase
-            .from('personalbuttons')
-            .upsert([{ user_id: userId, count: 0 }])
+            .from('buttons')
+            .upsert([{ 
+                button_type: buttonType, 
+                reference_id: referenceId, 
+                count: 0,
+                updated_at: new Date().toISOString()
+            }], {
+                onConflict: 'button_type,reference_id'
+            })
             .select();
         
         if (error) {
@@ -203,6 +249,18 @@ async function resetButtonCount(userId) {
         console.error('Error resetting button count:', err);
         throw err;
     }
+}
+
+async function getPersonalButtonCount(userId) {
+    return await getButtonCount('personal', userId);
+}
+
+async function updatePersonalButtonCount(userId) {
+    return await updateButtonCount('personal', userId);
+}
+
+async function resetPersonalButtonCount(userId) {
+    return await resetButtonCount('personal', userId);
 }
 
 async function getUserSettings(userId) {
@@ -221,7 +279,7 @@ async function getUserSettings(userId) {
             .eq('user_id', userId)
             .single();
         
-        const buttonCount = await getButtonCount(userId);
+        const buttonCount = await getPersonalButtonCount(userId);
         
         if (settingsError && settingsError.code === 'PGRST116') {
             return {
@@ -370,9 +428,15 @@ module.exports = {
     getWeenSpeakChannels,
     removeWeenSpeakChannel,
     initializeDB,
+    
     getButtonCount,
     updateButtonCount,
     resetButtonCount,
+    
+    getPersonalButtonCount,
+    updatePersonalButtonCount,
+    resetPersonalButtonCount,
+    
     getUserSettings,
     updateUserSettings,
     checkUserAllowsPings,
