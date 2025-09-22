@@ -127,7 +127,7 @@ module.exports = {
                         
                         const updatedButton = new ButtonBuilder()
                             .setCustomId(`${buttonType}_button_click`)
-                            .setLabel(`${buttonLabel}: ${newCount}`)
+                            .setLabel(`${newCount}`)
                             .setStyle(getButtonStyle(updatedButtonColor));
 
                         const updatedRow = new ActionRowBuilder()
