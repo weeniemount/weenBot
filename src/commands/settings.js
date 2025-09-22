@@ -149,17 +149,17 @@ module.exports = {
                         .setColor(0xb03000)
                         .addFields(
                             {
-                                name: '🔔 Bot Pings',
+                                name: '🔔 bot Pings',
                                 value: updatedSettings.allow_pings ? '✅ Enabled' : '❌ Disabled',
                                 inline: true
                             },
                             {
-                                name: '🔘 Button Color',
+                                name: '🔘 button color',
                                 value: `${getButtonEmoji(updatedSettings.button_color)} ${updatedSettings.button_color}`,
                                 inline: true
                             },
                             {
-                                name: '📊 Button Count',
+                                name: '📊 button count',
                                 value: updatedSettings.button_count?.toString() || '0',
                                 inline: true
                             }
