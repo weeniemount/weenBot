@@ -24,15 +24,17 @@ module.exports = {
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     async execute(interaction) {
-        if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-            return message.reply('no.');
+        if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
+            return interaction.reply({ content: 'no.', ephemeral: true });
         }
-        console.log("the command /weenspeak was run");
+        
         if (!process.env.GEMINI_API_KEY) {
-            return interaction.reply("the bot's gemini api key isnt setup! if you are the owner of the bot, set it in your .env file to use weenspeak functionality");
+            return interaction.reply({
+                content: "the bot's gemini api key isnt setup! if you are the owner of the bot, set it in your .env file to use weenspeak functionality",
+                ephemeral: true
+            });
         }
-        console.log("the gemini api key is set, continuing...");
-
+        
         const subcommand = interaction.options.getSubcommand();
         const channel = interaction.options.getChannel('channel');
 
