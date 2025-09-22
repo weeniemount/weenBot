@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { getButtonCount, updateButtonCount, resetButtonCount, getUserSettings } = require('../modules/db.js');
+const { privateButtonReplies } = require('../modules/globals.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -118,7 +119,7 @@ module.exports = {
                     try {
                         if (buttonType === 'personal' && buttonInteraction.user.id !== userId) {
                             await buttonInteraction.reply({
-                                content: "why dont you go press your own command buttons",
+                                content: privateButtonReplies(),
                                 ephemeral: true
                             });
                             return;

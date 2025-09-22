@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { getUserSettings, updateUserSettings } = require('../modules/db.js');
+const { privateButtonReplies } = require('../modules/globals.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -105,6 +106,11 @@ module.exports = {
             });
 
             collector.on('collect', async (i) => {
+                if (i.user.id !== interaction.user.id) {
+                    return i.reply({ content: privateButtonReplies(), ephemeral: true });
+                }
+
+
                 try {
                     if (i.isStringSelectMenu()) {
                         if (i.customId === 'settings_pings') {

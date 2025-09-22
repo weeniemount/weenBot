@@ -1,4 +1,5 @@
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder } = require('discord.js');
+const { privateButtonReplies } = require('../modules/globals.js');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -69,6 +70,10 @@ module.exports = {
 		});
 
 		collector.on('collect', async (confirmation) => {
+			if (confirmation.user.id !== interaction.user.id) {
+				return confirmation.reply({ content: privateButtonReplies(), ephemeral: true });
+			}
+
 			if (confirmation.customId === 'to_codeblock') {
 				await confirmation.update({
 					content: "```" + bubblewrap + "```",

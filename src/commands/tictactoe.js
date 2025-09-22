@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { checkUserAllowsPings } = require('../modules/db.js');
+const { privateButtonReplies } = require('../modules/globals.js');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -115,7 +116,7 @@ module.exports = {
 
 		collector.on('collect', async i => {
 			if (i.user.id !== currentPlayer.id) {
-				return i.reply({ content: "vro be patient", ephemeral: true });
+				return i.reply({ content: privateButtonReplies(), ephemeral: true });
 			}
 
 			const idx = parseInt(i.customId.split('_')[1]);
