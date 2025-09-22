@@ -74,11 +74,13 @@ module.exports = {
                         content: `removed ${channel} from weenspeak channels!`,
                         ...replyOptions
                     });
+                    console.log(`removed ${channel.id} from weenspeak channels`);
                 } else {
                     await interaction.reply({
                         content: `${channel} was never a weenspeak channel in the first place dude.`,
                         ...replyOptions
                     });
+                    console.log(`attempted to remove ${channel.id} but it wasn't a weenspeak channel`);
                 }
             } catch (error) {
                 console.error('error removing weenspeak channel:', error);
