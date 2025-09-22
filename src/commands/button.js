@@ -116,6 +116,13 @@ module.exports = {
             collector.on('collect', async (buttonInteraction) => {
                 if (buttonInteraction.customId === `${buttonType}_button_click`) {
                     try {
+                        if (buttonType === 'personal' && buttonInteraction.user.id !== userId) {
+                            await buttonInteraction.reply({
+                                content: "why dont you go press your own command buttons",
+                                ephemeral: true
+                            });
+                            return;
+                        }
                         const clickerId = buttonInteraction.user.id;
                         const newCount = await updateButtonCount(buttonType, referenceId);
                         
