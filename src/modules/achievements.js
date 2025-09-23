@@ -13,6 +13,12 @@ const ACHIEVEMENTS = {
         name: 'calc.exe is not responding',
         description: 'you broke the calculator??? how?????',
         requiredProgress: 0
+    },
+    TICTACTOE_WEENBOT: {
+        id: 'TICTACTOE_WEENBOT',
+        name: 'better then weenBot at gaming',
+        description: 'win against weenBot at tic tac toe',
+        requiredProgress: 0
     }
 };
 

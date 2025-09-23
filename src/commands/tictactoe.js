@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { checkUserAllowsPings } = require('../modules/db.js');
 const { privateButtonReplies } = require('../modules/globals.js');
+const { updateAchievementProgress } = require('../modules/achievements.js');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -71,35 +72,41 @@ module.exports = {
 		};
 
 		const makeAIMove = async () => {
-	if (!board.includes(null)) return false;
+			if (!board.includes(null)) return false;
 
-	let move = findWinningMove(symbols[playerO.id]);
+			let move = findWinningMove(symbols[playerO.id]);
 
-	if (move === null) move = findWinningMove(symbols[playerX.id]);
+			if (move === null) move = findWinningMove(symbols[playerX.id]);
 
-	if (move === null) {
-		const emptyIndices = board.map((v, i) => v === null ? i : null).filter(v => v !== null);
-		move = emptyIndices[Math.floor(Math.random() * emptyIndices.length)];
-	}
+			if (move === null) {
+				const emptyIndices = board.map((v, i) => v === null ? i : null).filter(v => v !== null);
+				move = emptyIndices[Math.floor(Math.random() * emptyIndices.length)];
+			}
 
-	board[move] = symbols[playerO.id];
+			board[move] = symbols[playerO.id];
 
-	if (checkWin(symbols[playerO.id])) {
-		await interaction.editReply({ content: `weenBot won! 🤖`, components: generateButtons() });
-		collector.stop();
-		return true;
-	}
+			if (checkWin(symbols[playerO.id])) {
+				await interaction.editReply({ content: `weenBot won! 🤖`, components: generateButtons() });
+				collector.stop();
+				const result = await updateAchievementProgress(
+					interaction.user.id,
+					'TICTACTOE_WEENBOT',
+					1,
+					interaction
+				);
+				return true;
+			}
 
-	if (!board.includes(null)) {
-		await interaction.editReply({ content: `no one wins lmfao`, components: generateButtons() });
-		collector.stop();
-		return true;
-	}
+			if (!board.includes(null)) {
+				await interaction.editReply({ content: `no one wins lmfao`, components: generateButtons() });
+				collector.stop();
+				return true;
+			}
 
-	currentPlayer = playerX;
-	await interaction.editReply({ content: `tic tac toe: ${playerX} (❌) vs ${playerO} (⭕)\nit's your turn`, components: generateButtons() });
-	return false;
-};
+			currentPlayer = playerX;
+			await interaction.editReply({ content: `tic tac toe: ${playerX} (❌) vs ${playerO} (⭕)\nit's your turn`, components: generateButtons() });
+			return false;
+		};
 
 
 		const message = await interaction.reply({
