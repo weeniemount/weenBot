@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { privateButtonReplies } = require('../modules/globals.js');
+const { updateAchievementProgress } = require('../modules/achievements.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -16,6 +17,7 @@ module.exports = {
         let firstNumber = null;
         let operation = null;
         let newNumber = true;
+        let calculatorBroken = false;
 
         function createCalculatorButtons() {
             const rows = [];
@@ -37,6 +39,7 @@ module.exports = {
                             .setCustomId(`calc_${button}`)
                             .setLabel(button)
                             .setStyle(style)
+                            .setDisabled(calculatorBroken)
                     );
                 });
                 rows.push(row);
@@ -44,14 +47,31 @@ module.exports = {
             return rows;
         }
 
-        function calculate(a, b, op) {
+        async function calculate(a, b, op) {
             a = parseFloat(a);
             b = parseFloat(b);
             switch(op) {
                 case '+': return a + b;
                 case '-': return a - b;
                 case '×': return a * b;
-                case '÷': return b !== 0 ? a / b : 'error';
+                case '÷': 
+                    if (b === 0) {
+                        calculatorBroken = true;
+                        
+                        try {
+                            const result = await updateAchievementProgress(
+                                interaction.user.id,
+                                'BROKEN_CALC',
+                                1,
+                                interaction
+                            );
+                        } catch (error) {
+                            console.error('Error updating achievement:', error);
+                        }
+                        
+                        return 'you broke the calculator....';
+                    }
+                    return a / b;
                 default: return b;
             }
         }
@@ -71,6 +91,11 @@ module.exports = {
                 return;
             }
 
+            if (calculatorBroken) {
+                await i.reply({ content: 'you broke the calculator....', ephemeral: true });
+                return;
+            }
+
             const button = i.customId.replace('calc_', '');
 
             if (button === 'C') {
@@ -83,7 +108,7 @@ module.exports = {
                 if (firstNumber === null) {
                     firstNumber = display;
                 } else if (!newNumber) {
-                    const result = calculate(firstNumber, display, operation);
+                    const result = await calculate(firstNumber, display, operation);
                     firstNumber = result.toString();
                     display = result.toString();
                 }
@@ -92,7 +117,7 @@ module.exports = {
             }
             else if (button === '=') {
                 if (firstNumber !== null && !newNumber) {
-                    display = calculate(firstNumber, display, operation).toString();
+                    display = (await calculate(firstNumber, display, operation)).toString();
                     firstNumber = null;
                     operation = null;
                     newNumber = true;
@@ -111,12 +136,17 @@ module.exports = {
                 }
             }
 
-            if (display.length > 15) {
+            if (display.length > 15 && !calculatorBroken) {
                 display = display.substring(0, 15);
             }
 
+            let contentMessage = '\`\`\`\n' + display + '\n\`\`\`';
+            if (calculatorBroken) {
+                contentMessage += '\n**no more calc**';
+            }
+
             await i.update({
-                content: '\`\`\`\n' + display + '\n\`\`\`',
+                content: contentMessage,
                 components: createCalculatorButtons()
             });
         });
@@ -127,8 +157,13 @@ module.exports = {
                 return row;
             });
 
+            let finalContent = '\`\`\`\n' + display + '\n\`\`\`';
+            if (calculatorBroken) {
+                finalContent += '\n**no more calc**';
+            }
+
             interaction.editReply({
-                content: '\`\`\`\n' + display + '\n\`\`\`',
+                content: finalContent,
                 components: disabledButtons
             }).catch(console.error);
         });

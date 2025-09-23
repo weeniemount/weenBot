@@ -7,6 +7,12 @@ const ACHIEVEMENTS = {
         name: 'weenfact addict',
         description: 'you are addicted to ween facts for whatever reason',
         requiredProgress: 20
+    },
+    BROKEN_CALC: {
+        id: 'BROKEN_CALC',
+        name: 'calc.exe is not responding',
+        description: 'you broke the calculator??? how?????',
+        requiredProgress: 0
     }
 };
 
