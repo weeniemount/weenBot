@@ -16,6 +16,8 @@ module.exports = {
 		const playerX = interaction.user;
 		const playerO = opponent;
 
+		const isPlayingAgainstBot = playerO.id === interaction.client.user.id || playerO.id === process.env.BOT_ID;
+
 		// Check ping settings for both players
 		const [playerXAllowsPings, playerOAllowsPings] = await Promise.all([
 			checkUserAllowsPings(playerX.id),
@@ -28,6 +30,8 @@ module.exports = {
 		const symbols = { [playerX.id]: '❌', [playerO.id]: '⭕' };
 
 		let currentPlayer = Math.random() < 0.5 ? playerX : playerO;
+		let gameActive = true;
+		let botThinking = false;
 
 		const generateButtons = () => {
 			const rows = [];
@@ -40,7 +44,7 @@ module.exports = {
 							.setCustomId(`ttt_${idx}`)
 							.setLabel(board[idx] || '\u200B')
 							.setStyle(ButtonStyle.Secondary)
-							.setDisabled(board[idx] !== null)
+							.setDisabled(board[idx] !== null || !gameActive || botThinking)
 					);
 				}
 				rows.push(row);
@@ -72,7 +76,15 @@ module.exports = {
 		};
 
 		const makeAIMove = async () => {
-			if (!board.includes(null)) return false;
+			if (!board.includes(null) || !gameActive) return false;
+
+			botThinking = true;
+			await interaction.editReply({ 
+				content: `tic tac toe: ${formatPlayer(playerX, playerXAllowsPings)} (❌) vs ${formatPlayer(playerO, playerOAllowsPings)} (⭕)\nweenBot is thinking...`, 
+				components: generateButtons() 
+			});
+
+			await new Promise(resolve => setTimeout(resolve, 500));
 
 			let move = findWinningMove(symbols[playerO.id]);
 
@@ -84,30 +96,26 @@ module.exports = {
 			}
 
 			board[move] = symbols[playerO.id];
+			botThinking = false;
 
 			if (checkWin(symbols[playerO.id])) {
+				gameActive = false;
 				await interaction.editReply({ content: `weenBot won! 🤖`, components: generateButtons() });
 				collector.stop();
-				const result = await updateAchievementProgress(
-					interaction.user.id,
-					'TICTACTOE_WEENBOT',
-					1,
-					interaction
-				);
 				return true;
 			}
 
 			if (!board.includes(null)) {
+				gameActive = false;
 				await interaction.editReply({ content: `no one wins lmfao`, components: generateButtons() });
 				collector.stop();
 				return true;
 			}
 
 			currentPlayer = playerX;
-			await interaction.editReply({ content: `tic tac toe: ${playerX} (❌) vs ${playerO} (⭕)\nit's your turn`, components: generateButtons() });
+			await interaction.editReply({ content: `tic tac toe: ${formatPlayer(playerX, playerXAllowsPings)} (❌) vs ${formatPlayer(playerO, playerOAllowsPings)} (⭕)\nit's your turn`, components: generateButtons() });
 			return false;
 		};
-
 
 		const message = await interaction.reply({
 			content: `tic tac toe: ${formatPlayer(playerX, playerXAllowsPings)} (❌) vs ${formatPlayer(playerO, playerOAllowsPings)} (⭕)\nit's ${formatPlayer(currentPlayer, currentPlayer.id === playerX.id ? playerXAllowsPings : playerOAllowsPings)}'s turn`,
@@ -122,6 +130,10 @@ module.exports = {
 		}
 
 		collector.on('collect', async i => {
+			if (!gameActive || botThinking) {
+				return i.reply({ content: privateButtonReplies(), ephemeral: true });
+			}
+
 			if (i.user.id !== currentPlayer.id) {
 				return i.reply({ content: privateButtonReplies(), ephemeral: true });
 			}
@@ -130,6 +142,17 @@ module.exports = {
 			board[idx] = symbols[currentPlayer.id];
 
 			if (checkWin(symbols[currentPlayer.id])) {
+				gameActive = false;
+				
+				if (isPlayingAgainstBot && currentPlayer.id === playerX.id) {
+					const result = await updateAchievementProgress(
+						interaction.user.id,
+						'TICTACTOE_WEENBOT',
+						1,
+						interaction
+					);
+				}
+				
 				await i.update({ 
 					content: `${formatPlayer(currentPlayer, currentPlayer.id === playerX.id ? playerXAllowsPings : playerOAllowsPings)} won!`, 
 					components: generateButtons() 
@@ -139,6 +162,7 @@ module.exports = {
 			}
 
 			if (!board.includes(null)) {
+				gameActive = false;
 				await i.update({ content: `no one wins lmfao`, components: generateButtons() });
 				collector.stop();
 				return;
@@ -156,6 +180,7 @@ module.exports = {
 		});
 
 		collector.on('end', async () => {
+			gameActive = false;
 			const disabledRows = generateButtons().map(row => {
 				row.components.forEach(btn => btn.setDisabled(true));
 				return row;
