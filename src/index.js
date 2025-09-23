@@ -3,8 +3,15 @@ const fs = require('node:fs');
 const dotenv = require('dotenv');
 const { initializeDB, getWeenSpeakChannels } = require('./modules/db.js');
 const { handleWeenSpeakMessage } = require('./modules/weenspeak.js');
-const { client } = require('./modules/globals.js');
 dotenv.config();
+
+const client = new Client({ 
+    intents: [
+        GatewayIntentBits.Guilds, 
+        GatewayIntentBits.GuildMessages, 
+        GatewayIntentBits.MessageContent
+    ] 
+});
 
 // express server to keep render and similar services happy
 const express = require('express');

@@ -1,6 +1,6 @@
 const { EmbedBuilder } = require('discord.js');
 const { getOrCreateUserAchievements, updateUserAchievements} = require('./db.js');
-const { getEmoji } = require('./globals.js');
+const { emojiTable } = require('./globals.js');
 
 const ACHIEVEMENTS = {
     WEENFACT_ADDICT: {
@@ -25,7 +25,7 @@ const ACHIEVEMENTS = {
 
 async function createAchievementEmbed(achievement, user) {
     const embed = new EmbedBuilder()
-        .setTitle(`${getEmoji("weenachievement")} achievement unlocked!`)
+        .setTitle(`<:weenachievement:${emojiTable["weenachievement"]}> achievement unlocked!`)
         .setDescription(`**${achievement.name}**\n${achievement.description}`)
         .setColor(0xFFD700) // gold color
         .setFooter({ text: `unlocked by ${user.username}` })

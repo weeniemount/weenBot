@@ -1,19 +1,3 @@
-const { Client, GatewayIntentBits } = require('discord.js');
-
-const client = new Client({ 
-    intents: [
-        GatewayIntentBits.Guilds, 
-        GatewayIntentBits.GuildMessages, 
-        GatewayIntentBits.MessageContent
-    ] 
-});
-
-function getEmoji(name) {
-    console.log('available emojis:', client.emojis.cache.map(e => e.name));
-    const emoji = client.emojis.cache.find(e => e.name === name);
-    return emoji ? emoji.toString() : `:${name}:`;
-}
-
 const privateButtonRepliesTable = [
     "why dont you go press your own command buttons",
     "no",
@@ -30,8 +14,13 @@ const privateButtonRepliesTable = [
     "STOP",
 ]
 
+const emojiTable = {
+    // well, back to h bot basics
+    weenachievement: '1420139236442509482' // custom emoji name
+};
+
 function privateButtonReplies() {
     return privateButtonRepliesTable[Math.floor(Math.random() * privateButtonRepliesTable.length)];
 }
 
-module.exports = { privateButtonReplies, getEmoji, client };
+module.exports = { privateButtonReplies, emojiTable };
