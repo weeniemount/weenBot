@@ -9,6 +9,7 @@ const client = new Client({
 });
 
 function getEmoji(name) {
+    console.log('available emojis:', client.emojis.cache.map(e => e.name));
     const emoji = client.emojis.cache.find(e => e.name === name);
     return emoji ? emoji.toString() : `:${name}:`;
 }
