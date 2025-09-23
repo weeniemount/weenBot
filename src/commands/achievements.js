@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { getUserAchievements, ACHIEVEMENTS } = require('../modules/achievements.js');
+const { getUserAchievements } = require('../modules/achievements.js');
+const { getEmoji } = require('../modules/globals.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -24,7 +25,7 @@ module.exports = {
 
             if (unlocked.length > 0) {
                 const unlockedText = unlocked
-                    .map(achievement => `🏆 **${achievement.name}**\n${achievement.description}`)
+                    .map(achievement => `${getEmoji("weenachievement")} **${achievement.name}**\n${achievement.description}`)
                     .join('\n\n');
                 embed.addFields({ name: 'unlocked achievements', value: unlockedText });
             } else {

@@ -1,8 +1,9 @@
 const { Client, GatewayIntentBits, Collection } = require('discord.js');
 const fs = require('node:fs');
 const dotenv = require('dotenv');
-const { initializeDB, getWeenSpeakChannels, incrementCommandsRun } = require('./modules/db.js');
+const { initializeDB, getWeenSpeakChannels } = require('./modules/db.js');
 const { handleWeenSpeakMessage } = require('./modules/weenspeak.js');
+const { client } = require('./modules/globals.js');
 dotenv.config();
 
 // express server to keep render and similar services happy
@@ -10,13 +11,7 @@ const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const client = new Client({ 
-    intents: [
-        GatewayIntentBits.Guilds, 
-        GatewayIntentBits.GuildMessages, 
-        GatewayIntentBits.MessageContent
-    ] 
-});
+
 client.commands = new Collection();
 let weenspeakChannels = new Set();
 const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
@@ -112,6 +107,7 @@ client.on('messageCreate', async (message) => {
         console.error('Error handling weenspeak message:', error);
     }
 });
+
 
 client.login(process.env.TOKEN);
 
