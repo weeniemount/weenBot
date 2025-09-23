@@ -24,19 +24,15 @@ module.exports = {
     async execute(interaction) {
         await interaction.reply({ content: facts[Math.floor(Math.random() * facts.length)] });
 
-        try {
-            const result = await updateAchievementProgress(
-                interaction.user.id,
-                'WEENFACT_ADDICT',
-                1,
-                interaction.channel
-            );
-            
-            if (result === null) {
-                console.error('Failed to update achievement progress for user:', interaction.user.id);
-            }
-        } catch (error) {
-            console.error('Error updating achievement progress:', error);
+        const result = await updateAchievementProgress(
+            interaction.user.id,
+            'WEENFACT_ADDICT',
+            1,
+            interaction
+        );
+        
+        if (result === null) {
+            console.error('Failed to update achievement progress for user:', interaction.user.id);
         }
     },
 };  
