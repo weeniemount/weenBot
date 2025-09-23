@@ -10,7 +10,7 @@ const client = new Client({
 
 function getEmoji(name) {
     const emoji = client.emojis.cache.find(e => e.name === name);
-    return emoji ? `<:${name}:${emoji.id}>` : `<:${name}:undefined>`;
+    return emoji ? emoji.toString() : `:${name}:`;
 }
 
 const privateButtonRepliesTable = [
