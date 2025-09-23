@@ -9,7 +9,8 @@ const client = new Client({
 });
 
 function getEmoji(name) {
-    return `<:${name}:${client.emojis.cache.find(e => e.name === name)}>`
+    const emoji = client.emojis.cache.find(e => e.name === name);
+    return emoji ? `<:${name}:${emoji.id}>` : `<:${name}:undefined>`;
 }
 
 const privateButtonRepliesTable = [
