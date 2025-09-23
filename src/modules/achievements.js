@@ -21,7 +21,7 @@ async function createAchievementEmbed(achievement, user) {
     return embed;
 }
 
-async function updateAchievementProgress(userId, achievementId, increment = 1, interaction = null) {
+async function updateAchievementProgress(userId, achievementId, increment = 1, interaction = null, channel = null) {
     try {
         console.log(`Updating achievement progress for user ${userId}, achievement ${achievementId}`);
         
@@ -56,15 +56,30 @@ async function updateAchievementProgress(userId, achievementId, increment = 1, i
         await updateUserAchievements(userId, userData.achievements, newTracking);
         console.log('Database updated successfully');
 
-        if (achievementUnlocked && interaction) {
+        if (achievementUnlocked) {
             try {
-                console.log('Sending achievement notification via followUp...');
-                const achievementEmbed = await createAchievementEmbed(achievementUnlocked, interaction.user);
-                await interaction.followUp({ 
-                    embeds: [achievementEmbed],
-                    ephemeral: false 
-                });
-                console.log('Achievement notification sent successfully!');
+                let user = null;
+                
+                if (interaction) {
+                    console.log('Sending achievement notification via followUp...');
+                    user = interaction.user;
+                    const achievementEmbed = await createAchievementEmbed(achievementUnlocked, user);
+                    await interaction.followUp({ 
+                        embeds: [achievementEmbed],
+                        ephemeral: false 
+                    });
+                    console.log('Achievement notification sent successfully via interaction!');
+                } else if (channel) {
+                    console.log('Sending achievement notification via channel...');
+                    user = await channel.client.users.fetch(userId);
+                    const achievementEmbed = await createAchievementEmbed(achievementUnlocked, user);
+                    await channel.send({ 
+                        embeds: [achievementEmbed]
+                    });
+                    console.log('Achievement notification sent successfully via channel!');
+                } else {
+                    console.log('No interaction or channel provided - achievement unlocked but notification not sent');
+                }
             } catch (error) {
                 console.error('Error sending achievement notification:', error);
                 console.log('Achievement was still unlocked, just notification failed');
