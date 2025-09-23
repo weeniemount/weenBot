@@ -2,7 +2,7 @@ const { EmbedBuilder } = require('discord.js');
 const { getOrCreateUserAchievements, updateUserAchievements} = require('./db.js');
 
 const ACHIEVEMENTS = {
-    WEENFACT_MASTER: {
+    WEENFACT_ADDICT: {
         id: 'WEENFACT_ADDICT',
         name: 'weenfact addict',
         description: 'you are addicted to ween facts for whatever reason',
