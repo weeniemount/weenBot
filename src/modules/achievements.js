@@ -21,16 +21,23 @@ async function createAchievementEmbed(achievement, user) {
     return embed;
 }
 
-async function updateAchievementProgress(userId, achievementId, increment = 1, channel = null) {
+async function updateAchievementProgress(userId, achievementId, increment = 1, interaction = null) {
     try {
+        console.log(`Updating achievement progress for user ${userId}, achievement ${achievementId}`);
+        
         const userData = await getOrCreateUserAchievements(userId);
         const achievement = ACHIEVEMENTS[achievementId];
         
-        if (!achievement) return null;
+        if (!achievement) {
+            console.error('Achievement not found:', achievementId);
+            return null;
+        }
 
         const tracking = userData.achievement_tracking || {};
         const currentProgress = tracking[achievementId] || 0;
         const newProgress = currentProgress + increment;
+
+        console.log(`Progress update: ${currentProgress} -> ${newProgress}/${achievement.requiredProgress}`);
 
         const newTracking = {
             ...tracking,
@@ -38,23 +45,32 @@ async function updateAchievementProgress(userId, achievementId, increment = 1, c
         };
 
         let achievementUnlocked = null;
+        
         if (newProgress >= achievement.requiredProgress && 
             !userData.achievements.includes(achievementId)) {
             achievementUnlocked = achievement;
             userData.achievements.push(achievementId);
-
-            if (channel && achievementUnlocked) {
-                try {
-                    const user = await channel.client.users.fetch(userId);
-                    const achievementEmbed = await createAchievementEmbed(achievementUnlocked, user);
-                    await channel.send({ embeds: [achievementEmbed] });
-                } catch (error) {
-                    console.error('Error sending achievement notification:', error);
-                }
-            }
+            console.log(`Achievement unlocked: ${achievement.name}`);
         }
 
         await updateUserAchievements(userId, userData.achievements, newTracking);
+        console.log('Database updated successfully');
+
+        if (achievementUnlocked && interaction) {
+            try {
+                console.log('Sending achievement notification via followUp...');
+                const achievementEmbed = await createAchievementEmbed(achievementUnlocked, interaction.user);
+                await interaction.followUp({ 
+                    embeds: [achievementEmbed],
+                    ephemeral: false 
+                });
+                console.log('Achievement notification sent successfully!');
+            } catch (error) {
+                console.error('Error sending achievement notification:', error);
+                console.log('Achievement was still unlocked, just notification failed');
+            }
+        }
+
         return achievementUnlocked;
     } catch (err) {
         console.error('Error updating achievement progress:', err);
