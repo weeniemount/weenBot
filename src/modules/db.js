@@ -431,6 +431,74 @@ async function getCommandsRun() {
     }
 }
 
+async function getOrCreateUserAchievements(userId) {
+    if (!supabase) {
+        console.log('Supabase client not initialized, attempting to initialize...');
+        initializeSupabase();
+        if (!supabase) {
+            throw new Error('Supabase not initialized');
+        }
+    }
+
+    try {
+        const { data, error } = await supabase
+            .from('user_achievements')
+            .select('*')
+            .eq('user_id', userId)
+            .single();
+
+        if (error && error.code === 'PGRST116') {
+            const newData = {
+                user_id: userId,
+                achievements: [],
+                achievement_tracking: {}
+            };
+
+            const { data: insertedData, error: insertError } = await supabase
+                .from('user_achievements')
+                .insert([newData])
+                .select()
+                .single();
+
+            if (insertError) throw insertError;
+            return insertedData;
+        }
+
+        if (error) throw error;
+        return data;
+    } catch (err) {
+        console.error('Error getting user achievements:', err);
+        throw err;
+    }
+}
+
+async function updateUserAchievements(userId, achievements, tracking) {
+    if (!supabase) {
+        console.log('Supabase client not initialized, attempting to initialize...');
+        initializeSupabase();
+        if (!supabase) {
+            throw new Error('Supabase not initialized');
+        }
+    }
+
+    try {
+        const { error } = await supabase
+            .from('user_achievements')
+            .update({
+                achievements: achievements,
+                achievement_tracking: tracking,
+                updated_at: new Date().toISOString()
+            })
+            .eq('user_id', userId);
+
+        if (error) throw error;
+        return true;
+    } catch (err) {
+        console.error('Error updating user achievements:', err);
+        throw err;
+    }
+}
+
 module.exports = {
     db: supabase,
     addWeenSpeakChannel,
@@ -450,5 +518,7 @@ module.exports = {
     updateUserSettings,
     checkUserAllowsPings,
     incrementCommandsRun,
-    getCommandsRun
+    getCommandsRun,
+    getOrCreateUserAchievements,
+    updateUserAchievements
 };

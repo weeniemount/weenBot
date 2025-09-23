@@ -27,22 +27,7 @@ module.exports = {
                     .map(achievement => `🏆 **${achievement.name}**\n${achievement.description}`)
                     .join('\n\n');
                 embed.addFields({ name: 'unlocked achievements', value: unlockedText });
-            }
-
-            const inProgress = Object.entries(tracking)
-                .filter(([id, progress]) => !unlocked.find(a => a.id === id))
-                .map(([id, progress]) => {
-                    const achievement = ACHIEVEMENTS[id];
-                    if (!achievement) return null;
-                    return `🔄 **${achievement.name}**\nprogress: ${progress}/${achievement.requiredProgress}`;
-                })
-                .filter(text => text !== null);
-
-            if (inProgress.length > 0) {
-                embed.addFields({ name: 'achievements in progress', value: inProgress.join('\n\n') });
-            }
-
-            if (unlocked.length === 0 && inProgress.length === 0) {
+            } else {
                 embed.setDescription('you dont got any of em');
             }
 

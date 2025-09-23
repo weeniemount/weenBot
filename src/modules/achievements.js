@@ -1,50 +1,24 @@
 const { EmbedBuilder } = require('discord.js');
-const { db } = require('./db.js');
+const { getOrCreateUserAchievements, updateUserAchievements} = require('./js');
 
 const ACHIEVEMENTS = {
     WEENFACT_MASTER: {
-        id: 'WEENFACT_ADICT',
+        id: 'WEENFACT_ADDICT',
         name: 'weenfact addict',
         description: 'you are addicted to ween facts for whatever reason',
         requiredProgress: 20
     }
 };
 
-async function getOrCreateUserAchievements(userId) {
-    if (!db) {
-        throw new Error('Database not initialized');
-    }
+async function createAchievementEmbed(achievement, user) {
+    const embed = new EmbedBuilder()
+        .setTitle('🏆 achievement Unlocked!')
+        .setDescription(`**${achievement.name}**\n${achievement.description}`)
+        .setColor(0xFFD700) // gold color
+        .setFooter({ text: `unlocked by ${user.username}` })
+        .setTimestamp();
 
-    try {
-        const { data, error } = await db
-            .from('user_achievements')
-            .select('*')
-            .eq('user_id', userId)
-            .single();
-
-        if (error && error.code === 'PGRST116') {
-            const newData = {
-                user_id: userId,
-                achievements: [],
-                achievement_tracking: {}
-            };
-
-            const { data: insertedData, error: insertError } = await db
-                .from('user_achievements')
-                .insert([newData])
-                .select()
-                .single();
-
-            if (insertError) throw insertError;
-            return insertedData;
-        }
-
-        if (error) throw error;
-        return data;
-    } catch (err) {
-        console.error('Error getting user achievements:', err);
-        throw err;
-    }
+    return embed;
 }
 
 async function updateAchievementProgress(userId, achievementId, increment = 1, channel = null) {
@@ -80,33 +54,12 @@ async function updateAchievementProgress(userId, achievementId, increment = 1, c
             }
         }
 
-        const { error } = await db
-            .from('user_achievements')
-            .update({
-                achievement_tracking: newTracking,
-                achievements: userData.achievements,
-                updated_at: new Date().toISOString()
-            })
-            .eq('user_id', userId);
-
-        if (error) throw error;
-
+        await updateUserAchievements(userId, userData.achievements, newTracking);
         return achievementUnlocked;
     } catch (err) {
         console.error('Error updating achievement progress:', err);
         return null;
     }
-}
-
-async function createAchievementEmbed(achievement, user) {
-    const embed = new EmbedBuilder()
-        .setTitle('🏆 Achievement Unlocked!')
-        .setDescription(`**${achievement.name}**\n${achievement.description}`)
-        .setColor(0xFFD700) // gold color
-        .setFooter({ text: `Unlocked by ${user.username}` })
-        .setTimestamp();
-
-    return embed;
 }
 
 async function getUserAchievements(userId) {
@@ -143,16 +96,7 @@ async function forceUnlockAchievement(userId, achievementId, channel = null) {
             [achievementId]: achievement.requiredProgress
         };
 
-        const { error } = await db
-            .from('user_achievements')
-            .update({
-                achievements: userData.achievements,
-                achievement_tracking: newTracking,
-                updated_at: new Date().toISOString()
-            })
-            .eq('user_id', userId);
-
-        if (error) throw error;
+        await updateUserAchievements(userId, userData.achievements, newTracking);
 
         if (channel) {
             try {
