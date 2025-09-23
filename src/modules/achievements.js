@@ -1,5 +1,5 @@
 const { EmbedBuilder } = require('discord.js');
-const { getOrCreateUserAchievements, updateUserAchievements} = require('./js');
+const { getOrCreateUserAchievements, updateUserAchievements} = require('./db.js');
 
 const ACHIEVEMENTS = {
     WEENFACT_MASTER: {
