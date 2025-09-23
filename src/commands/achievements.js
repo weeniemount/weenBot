@@ -25,7 +25,7 @@ module.exports = {
 
             if (unlocked.length > 0) {
                 const unlockedText = unlocked
-                    .map(achievement => `${getEmoji("weenachievement")} **${achievement.name}**\n${achievement.description}`)
+                    .map(achievement => `:weenachievement: **${achievement.name}**\n${achievement.description}`)
                     .join('\n\n');
                 embed.addFields({ name: 'unlocked achievements', value: unlockedText });
             } else {
