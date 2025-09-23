@@ -26,9 +26,18 @@ CREATE TABLE weenbotinfo (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+CREATE TABLE user_achievements (
+    user_id TEXT PRIMARY KEY,
+    achievements JSONB DEFAULT '[]'::jsonb,
+    achievement_tracking JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 
 CREATE INDEX idx_buttons_type_ref ON buttons(button_type, reference_id);
 CREATE INDEX idx_buttons_updated ON buttons(updated_at);
+CREATE INDEX idx_user_achievements_user ON user_achievements(user_id);
 
 INSERT INTO buttons (button_type, reference_id, count) 
 VALUES ('global', 'global', 0) 

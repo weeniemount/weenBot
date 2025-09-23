@@ -1,4 +1,5 @@
 const { SlashCommandBuilder } = require('discord.js');
+const { updateAchievementProgress } = require('../modules/achievements.js');
 
 const facts = [
     "did you know i made this bot on september 20th 2025",
@@ -17,10 +18,17 @@ const facts = [
 ]
 
 module.exports = {
-	data: new SlashCommandBuilder({ integration_types: [0,1] })
-		.setName('weenfact')
-		.setDescription('fun ween fact of the day'),
-	async execute(interaction) {
-		await interaction.reply({ content: facts[Math.floor(Math.random() * facts.length)] });
-	},
+    data: new SlashCommandBuilder({ integration_types: [0,1] })
+        .setName('weenfact')
+        .setDescription('fun ween fact of the day'),
+    async execute(interaction) {
+        await interaction.reply({ content: facts[Math.floor(Math.random() * facts.length)] });
+
+        await updateAchievementProgress(
+            interaction.user.id,
+            'WEENFACT_MASTER',
+            1,
+            interaction.channel
+        );
+    },
 };  
