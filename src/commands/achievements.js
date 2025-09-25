@@ -1,5 +1,5 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { getUserAchievements } = require('../modules/achievements.js');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { getUserAchievements, ACHIEVEMENTS } = require('../modules/achievements.js');
 const { emojiTable } = require('../modules/globals.js');
 
 module.exports = {
@@ -17,23 +17,83 @@ module.exports = {
         try {
             const { unlocked, tracking } = await getUserAchievements(targetUser.id);
             
-            const embed = new EmbedBuilder()
-                .setColor(0xFFD700)
-                .setTitle(`${targetUser.username}'s achievements`)
-                .setThumbnail(targetUser.displayAvatarURL())
-                .setTimestamp();
+            const allAchievements = Object.values(ACHIEVEMENTS);
+            const unlockedIds = unlocked.map(achievement => achievement.id);
+            const lockedAchievements = allAchievements.filter(achievement => !unlockedIds.includes(achievement.id));
 
-            if (unlocked.length > 0) {
-                const unlockedText = unlocked
-                    .map(achievement => `<:weenachievement:${emojiTable["weenachievement"]}> **${achievement.name}**\n${achievement.description}`)
-                    .join('\n\n');
-                embed.addFields({ name: 'unlocked achievements', value: unlockedText });
-            } else {
-                embed.setDescription('you dont got any of em');
-            }
+            const row = new ActionRowBuilder()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId(`achievements_unlocked_${targetUser.id}`)
+                        .setLabel('unlocked')
+                        .setStyle(ButtonStyle.Success)
+                        .setEmoji(emojiTable["weenachievement"]),
+                    new ButtonBuilder()
+                        .setCustomId(`achievements_locked_${targetUser.id}`)
+                        .setLabel('locked')
+                        .setStyle(ButtonStyle.Secondary)
+                        .setEmoji('🔒')
+                );
 
-            await interaction.reply({ embeds: [embed] });
-            
+            const unlockedEmbed = createUnlockedEmbed(targetUser, unlocked);
+
+            await interaction.reply({ 
+                embeds: [unlockedEmbed], 
+                components: [row] 
+            });
+
+            const filter = (buttonInteraction) => {
+                return buttonInteraction.customId.startsWith('achievements_') && 
+                       buttonInteraction.customId.endsWith(`_${targetUser.id}`);
+            };
+
+            const collector = interaction.channel.createMessageComponentCollector({ filter });
+
+            collector.on('collect', async (buttonInteraction) => {
+                if (buttonInteraction.customId.includes('unlocked')) {
+                    const embed = createUnlockedEmbed(targetUser, unlocked);
+                    
+                    const newRow = new ActionRowBuilder()
+                        .addComponents(
+                            new ButtonBuilder()
+                                .setCustomId(`achievements_unlocked_${targetUser.id}`)
+                                .setLabel('unlocked')
+                                .setStyle(ButtonStyle.Success)
+                                .setEmoji(emojiTable["weenachievement"]),
+                            new ButtonBuilder()
+                                .setCustomId(`achievements_locked_${targetUser.id}`)
+                                .setLabel('locked')
+                                .setStyle(ButtonStyle.Secondary)
+                                .setEmoji('🔒')
+                        );
+
+                    await buttonInteraction.update({ 
+                        embeds: [embed], 
+                        components: [newRow] 
+                    });
+                } else if (buttonInteraction.customId.includes('locked')) {
+                    const embed = createLockedEmbed(targetUser, lockedAchievements, tracking);
+                    
+                    const newRow = new ActionRowBuilder()
+                        .addComponents(
+                            new ButtonBuilder()
+                                .setCustomId(`achievements_unlocked_${targetUser.id}`)
+                                .setLabel('unlocked')
+                                .setStyle(ButtonStyle.Secondary)
+                                .setEmoji(emojiTable["weenachievement"]),
+                            new ButtonBuilder()
+                                .setCustomId(`achievements_locked_${targetUser.id}`)
+                                .setLabel('locked')
+                                .setStyle(ButtonStyle.Success)
+                                .setEmoji('🔒')
+                        );
+
+                    await buttonInteraction.update({ 
+                        embeds: [embed], 
+                        components: [newRow] 
+                    });
+                }
+            });            
         } catch (error) {
             console.error('Error fetching achievements:', error);
             await interaction.reply({ 
@@ -43,3 +103,46 @@ module.exports = {
         }
     }
 };
+
+function createUnlockedEmbed(targetUser, unlocked) {
+    const embed = new EmbedBuilder()
+        .setColor(0xFFD700) // gold color
+        .setTitle(`${targetUser.username}'s achievements`)
+        .setThumbnail(targetUser.displayAvatarURL())
+        .setTimestamp();
+
+    if (unlocked.length > 0) {
+        const unlockedText = unlocked
+            .map(achievement => `<:weenachievement:${emojiTable["weenachievement"]}> **${achievement.name}**\n${achievement.description}`)
+            .join('\n\n');
+        embed.addFields({ name: `unlocked achievements (${unlocked.length})`, value: unlockedText });
+    } else {
+        embed.setDescription('you dont got any of em');
+    }
+
+    return embed;
+}
+
+function createLockedEmbed(targetUser, lockedAchievements, tracking) {
+    const embed = new EmbedBuilder()
+        .setColor(0x808080)
+        .setTitle(`${targetUser.username}'s achievements`)
+        .setThumbnail(targetUser.displayAvatarURL())
+        .setTimestamp();
+
+    if (lockedAchievements.length > 0) {
+        const lockedText = lockedAchievements
+            .map(achievement => {
+                const progress = tracking[achievement.id] || 0;
+                const progressText = achievement.requiredProgress > 0 ? 
+                    ` (${progress}/${achievement.requiredProgress})` : '';
+                return `🔒 **${achievement.name}**${progressText}\n${achievement.description}`;
+            })
+            .join('\n\n');
+        embed.addFields({ name: `locked achievements (${lockedAchievements.length})`, value: lockedText });
+    } else {
+        embed.setDescription('theres none of em you havent got yet lol');
+    }
+
+    return embed;
+}
