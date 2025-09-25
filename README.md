@@ -64,6 +64,7 @@ since you (probably) did all of this, your .env.example should be ready to go! h
 this step can be skipped if you dont want the bot's emojis working (although it is recommended..)
 
 head over to the emojis tab on your bot
+
 ![alt text](src/images/github/image-5.png)
 
 here, you need to upload every emoji from src/images/emojis onto this page. dont rename them! then head over to ``src/modules/globals.js``, scroll down to the ``emojiTable`` variable and paste the emoji id for every emoji you uploaded.
