@@ -100,7 +100,7 @@ module.exports = {
 
 			if (checkWin(symbols[playerO.id])) {
 				gameActive = false;
-				await interaction.editReply({ content: `weenBot won! <:weenie:${emojiTable["weenie"]}>`, components: generateButtons() });
+				await interaction.editReply({ content: `weenBot won! <a:weenie:${emojiTable["weenie"]}>`, components: generateButtons() });
 				collector.stop();
 				return true;
 			}
