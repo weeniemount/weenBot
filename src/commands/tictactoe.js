@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { checkUserAllowsPings } = require('../modules/db.js');
-const { privateButtonReplies } = require('../modules/globals.js');
+const { privateButtonReplies, emojiTable } = require('../modules/globals.js');
 const { updateAchievementProgress } = require('../modules/achievements.js');
 
 module.exports = {
@@ -100,7 +100,7 @@ module.exports = {
 
 			if (checkWin(symbols[playerO.id])) {
 				gameActive = false;
-				await interaction.editReply({ content: `weenBot won! 🤖`, components: generateButtons() });
+				await interaction.editReply({ content: `weenBot won! <:weenie:${emojiTable["weenie"]}>`, components: generateButtons() });
 				collector.stop();
 				return true;
 			}

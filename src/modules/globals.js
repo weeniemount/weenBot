@@ -16,7 +16,8 @@ const privateButtonRepliesTable = [
 
 const emojiTable = {
     // well, back to h bot basics
-    weenachievement: '1420139236442509482' // custom emoji name
+    weenachievement: '1420139236442509482',
+    weenie: '1420702309595222087',
 };
 
 function privateButtonReplies() {
