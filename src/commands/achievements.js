@@ -133,10 +133,7 @@ function createLockedEmbed(targetUser, lockedAchievements, tracking) {
     if (lockedAchievements.length > 0) {
         const lockedText = lockedAchievements
             .map(achievement => {
-                const progress = tracking[achievement.id] || 0;
-                const progressText = achievement.requiredProgress > 0 ? 
-                    ` (${progress}/${achievement.requiredProgress})` : '';
-                return `🔒 **${achievement.name}**${progressText}\n${achievement.description}`;
+                return `🔒 **${achievement.name}**\n${achievement.description}`;
             })
             .join('\n\n');
         embed.addFields({ name: `locked achievements (${lockedAchievements.length})`, value: lockedText });
