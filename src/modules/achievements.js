@@ -20,6 +20,12 @@ const ACHIEVEMENTS = {
         name: 'better then weenBot at gaming',
         description: 'win against weenBot at tic tac toe',
         requiredProgress: 0
+    },
+    TICTACTOE_SELF: {
+        id: 'TICTACTOE_SELF',
+        name: 'no one to play with',
+        description: 'play tic tac toe against yourself',
+        requiredProgress: 0
     }
 };
 

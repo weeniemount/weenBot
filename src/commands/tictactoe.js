@@ -17,6 +17,7 @@ module.exports = {
 		const playerO = opponent;
 
 		const isPlayingAgainstBot = playerO.id === interaction.client.user.id || playerO.id === process.env.BOT_ID;
+		const isPlayingAgainstSelf = playerX.id === playerO.id;
 
 		// Check ping settings for both players
 		const [playerXAllowsPings, playerOAllowsPings] = await Promise.all([
@@ -148,6 +149,15 @@ module.exports = {
 					const result = await updateAchievementProgress(
 						interaction.user.id,
 						'TICTACTOE_WEENBOT',
+						1,
+						interaction
+					);
+				}
+				
+				if (isPlayingAgainstSelf) {
+					const result = await updateAchievementProgress(
+						interaction.user.id,
+						'TICTACTOE_SELF',
 						1,
 						interaction
 					);
