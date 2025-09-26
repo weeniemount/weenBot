@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { getUserAchievements, ACHIEVEMENTS, updateAchievementProgress } = require('../modules/achievements.js');
-const { emojiTable } = require('../modules/globals.js');
+const { emojiTable, privateButtonReplies } = require('../modules/globals.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -59,6 +59,9 @@ module.exports = {
             const collector = interaction.channel.createMessageComponentCollector({ filter });
 
             collector.on('collect', async (buttonInteraction) => {
+                if (confirmation.user.id !== interaction.user.id) {
+                    return confirmation.reply({ content: privateButtonReplies(), ephemeral: true });
+                }
                 if (buttonInteraction.customId.includes('unlocked')) {
                     const embed = createUnlockedEmbed(targetUser, unlocked);
                     
