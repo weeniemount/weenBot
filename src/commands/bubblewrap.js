@@ -1,5 +1,6 @@
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder } = require('discord.js');
 const { privateButtonReplies } = require('../modules/globals.js');
+const { updateAchievementProgress } = require('../modules/achievements.js');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -42,6 +43,12 @@ module.exports = {
 		let bubblewrap = genBubblewrap(text,rowsreal,columnsreal);
 
 		if (bubblewrap.length > 2000) {
+			const result = await updateAchievementProgress(
+				interaction.user.id,
+				'BIG_BUBBLEWRAP',
+				1,
+				interaction
+			);
 			return interaction.reply({ content: "output bubble wrap is too long for Discord!", ephemeral: true });
 		}
 

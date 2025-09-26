@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const { getUserAchievements, ACHIEVEMENTS } = require('../modules/achievements.js');
+const { getUserAchievements, ACHIEVEMENTS, updateAchievementProgress } = require('../modules/achievements.js');
 const { emojiTable } = require('../modules/globals.js');
 
 module.exports = {
@@ -41,6 +41,15 @@ module.exports = {
                 embeds: [unlockedEmbed], 
                 components: [row] 
             });
+
+            if (interaction.options.getUser('user') == interaction.client.user.id) {
+                const result = await updateAchievementProgress(
+                    interaction.user.id,
+                    'ACHIEVEMENT_ACHIEVEMENT',
+                    1,
+                    interaction
+                );
+            }
 
             const filter = (buttonInteraction) => {
                 return buttonInteraction.customId.startsWith('achievements_') && 

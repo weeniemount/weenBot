@@ -16,7 +16,7 @@ module.exports = {
 		const playerX = interaction.user;
 		const playerO = opponent;
 
-		const isPlayingAgainstBot = playerO.id === interaction.client.user.id || playerO.id === process.env.BOT_ID;
+		const isPlayingAgainstBot = playerO.id === interaction.client.user.id || playerO.id === process.env.CLIENT_ID;
 		const isPlayingAgainstSelf = playerX.id === playerO.id;
 
 		// Check ping settings for both players

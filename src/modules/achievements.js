@@ -26,6 +26,18 @@ const ACHIEVEMENTS = {
         name: 'no one to play with',
         description: 'play tic tac toe against yourself',
         requiredProgress: 0
+    },
+    BIG_BUBBLEWRAP: {
+        id: 'BIG_BUBBLEWRAP',
+        name: 'big bubblewrap',
+        description: "try to make bubble wrap so big it cant fit in discord's message word limit",
+        requiredProgress: 0
+    },
+    ACHIEVEMENT_ACHIEVEMENT: {
+        id: 'ACHIEVEMENT_ACHIEVEMENT',
+        name: 'achievement achievement',
+        description: "check weenBot's achievements",
+        requiredProgress: 0
     }
 };
 
