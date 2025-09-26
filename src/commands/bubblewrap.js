@@ -43,13 +43,14 @@ module.exports = {
 		let bubblewrap = genBubblewrap(text,rowsreal,columnsreal);
 
 		if (bubblewrap.length > 2000) {
+			interaction.reply({ content: "output bubble wrap is too long for Discord!", ephemeral: true });
 			const result = await updateAchievementProgress(
 				interaction.user.id,
 				'BIG_BUBBLEWRAP',
 				1,
 				interaction
 			);
-			return interaction.reply({ content: "output bubble wrap is too long for Discord!", ephemeral: true });
+			return
 		}
 
 		const toCodeBlock = new ButtonBuilder()
