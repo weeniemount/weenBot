@@ -59,8 +59,8 @@ module.exports = {
             const collector = interaction.channel.createMessageComponentCollector({ filter });
 
             collector.on('collect', async (buttonInteraction) => {
-                if (confirmation.user.id !== interaction.user.id) {
-                    return confirmation.reply({ content: privateButtonReplies(), ephemeral: true });
+                if (buttonInteraction.user.id !== interaction.user.id) {
+                    return buttonInteraction.reply({ content: privateButtonReplies(), ephemeral: true });
                 }
                 if (buttonInteraction.customId.includes('unlocked')) {
                     const embed = createUnlockedEmbed(targetUser, unlocked);
