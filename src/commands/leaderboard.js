@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
-const { getButtonCount } = require('../modules/db.js');
+const { getButtonCount, initializeSupabase } = require('../modules/db.js');
 const { privateButtonReplies } = require('../modules/globals.js');
 
 module.exports = {
@@ -9,6 +9,13 @@ module.exports = {
 
     async execute(interaction) {
         const serverId = interaction.guild?.id;
+
+        if (!interaction.channel) {
+            return interaction.reply({ 
+                content: 'this command must be used in a server channel',
+                ephemeral: true 
+            });
+        }
 
         await interaction.deferReply();
 
@@ -60,12 +67,12 @@ module.exports = {
                 );
 
             const embed = createLeaderboardEmbed(leaderboards, currentScope, currentType, interaction);
-            await interaction.editReply({ 
+            const message = await interaction.editReply({ 
                 embeds: [embed], 
                 components: [selectRow, buttonRow] 
             });
 
-            const collector = interaction.channel.createMessageComponentCollector({ 
+            const collector = message.createMessageComponentCollector({ 
                 time: 120000 
             });
 
@@ -77,6 +84,8 @@ module.exports = {
                     });
                 }
 
+                await componentInteraction.deferUpdate();
+
                 if (componentInteraction.isStringSelectMenu()) {
                     currentType = componentInteraction.values[0];
                 } else if (componentInteraction.isButton()) {
@@ -87,28 +96,32 @@ module.exports = {
                     }
                 }
 
-                const newLeaderboards = await fetchLeaderboards(interaction, currentScope, serverId);
+                try {
+                    const newLeaderboards = await fetchLeaderboards(interaction, currentScope, serverId);
 
-                const newButtonRow = new ActionRowBuilder()
-                    .addComponents(
-                        new ButtonBuilder()
-                            .setCustomId('lb_global')
-                            .setLabel('global')
-                            .setStyle(currentScope === 'global' ? ButtonStyle.Primary : ButtonStyle.Secondary)
-                            .setEmoji('🌍'),
-                        new ButtonBuilder()
-                            .setCustomId('lb_server')
-                            .setLabel('server')
-                            .setStyle(currentScope === 'server' ? ButtonStyle.Primary : ButtonStyle.Secondary)
-                            .setEmoji('🏠')
-                            .setDisabled(!serverId)
-                    );
+                    const newButtonRow = new ActionRowBuilder()
+                        .addComponents(
+                            new ButtonBuilder()
+                                .setCustomId('lb_global')
+                                .setLabel('global')
+                                .setStyle(currentScope === 'global' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+                                .setEmoji('🌍'),
+                            new ButtonBuilder()
+                                .setCustomId('lb_server')
+                                .setLabel('server')
+                                .setStyle(currentScope === 'server' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+                                .setEmoji('🏠')
+                                .setDisabled(!serverId)
+                        );
 
-                const newEmbed = createLeaderboardEmbed(newLeaderboards, currentScope, currentType, interaction);
-                await componentInteraction.update({ 
-                    embeds: [newEmbed], 
-                    components: [selectRow, newButtonRow] 
-                });
+                    const newEmbed = createLeaderboardEmbed(newLeaderboards, currentScope, currentType, interaction);
+                    await componentInteraction.editReply({ 
+                        embeds: [newEmbed], 
+                        components: [selectRow, newButtonRow] 
+                    });
+                } catch (error) {
+                    console.error('Error updating leaderboard:', error);
+                }
             });
 
             collector.on('end', async () => {
@@ -162,7 +175,19 @@ module.exports = {
 };
 
 async function fetchLeaderboards(interaction, scope, serverId) {
-    const { db } = require('../modules/db.js');
+    const dbModule = require('../modules/db.js');
+    let db = dbModule.db;
+    
+    if (!db) {
+        console.log('DB is null, initializing...');
+        initializeSupabase();
+        db = dbModule.db;
+        
+        if (!db) {
+            throw new Error('Failed to initialize database connection');
+        }
+    }
+
     const leaderboards = {
         personalButtons: [],
         serverButtons: [],
@@ -258,32 +283,36 @@ async function fetchLeaderboards(interaction, scope, serverId) {
 
         } else {
             const guild = interaction.guild;
-            const members = await guild.members.fetch();
-
-            const personalPromises = members.map(async (member) => {
+            
+            const memberIds = Array.from(guild.members.cache.keys());
+            
+            if (memberIds.length < 10) {
                 try {
-                    const { data } = await db
-                        .from('buttons')
-                        .select('count')
-                        .eq('button_type', 'personal')
-                        .eq('reference_id', member.id)
-                        .single();
-
-                    return {
-                        name: member.user.username,
-                        id: member.id,
-                        count: data ? data.count : 0
-                    };
+                    await guild.members.fetch({ limit: 100 });
+                    memberIds.push(...Array.from(guild.members.cache.keys()));
                 } catch (err) {
-                    return null;
+                    console.error('Could not fetch additional members:', err);
                 }
-            });
+            }
 
-            const personalResults = await Promise.all(personalPromises);
-            leaderboards.personalButtons = personalResults
-                .filter(r => r && r.count > 0)
-                .sort((a, b) => b.count - a.count)
-                .slice(0, 10);
+            const { data: personalData } = await db
+                .from('buttons')
+                .select('reference_id, count')
+                .eq('button_type', 'personal')
+                .in('reference_id', memberIds)
+                .order('count', { ascending: false })
+                .limit(10);
+
+            if (personalData) {
+                for (const entry of personalData) {
+                    const member = guild.members.cache.get(entry.reference_id);
+                    leaderboards.personalButtons.push({
+                        name: member ? member.user.username : 'unknown user',
+                        id: entry.reference_id,
+                        count: entry.count
+                    });
+                }
+            }
 
             const serverButtonCount = await getButtonCount('server', serverId);
             if (serverButtonCount > 0) {
@@ -294,29 +323,30 @@ async function fetchLeaderboards(interaction, scope, serverId) {
                 });
             }
 
-            const achievementPromises = members.map(async (member) => {
-                try {
-                    const { data } = await db
-                        .from('user_achievements')
-                        .select('achievements')
-                        .eq('user_id', member.id)
-                        .single();
+            const { data: achievementData } = await db
+                .from('user_achievements')
+                .select('user_id, achievements')
+                .in('user_id', memberIds);
 
-                    return {
-                        name: member.user.username,
-                        id: member.id,
-                        count: data && Array.isArray(data.achievements) ? data.achievements.length : 0
-                    };
-                } catch (err) {
-                    return null;
+            if (achievementData) {
+                const sorted = achievementData
+                    .map(entry => ({
+                        user_id: entry.user_id,
+                        count: Array.isArray(entry.achievements) ? entry.achievements.length : 0
+                    }))
+                    .filter(entry => entry.count > 0)
+                    .sort((a, b) => b.count - a.count)
+                    .slice(0, 10);
+
+                for (const entry of sorted) {
+                    const member = guild.members.cache.get(entry.user_id);
+                    leaderboards.achievements.push({
+                        name: member ? member.user.username : 'unknown user',
+                        id: entry.user_id,
+                        count: entry.count
+                    });
                 }
-            });
-
-            const achievementResults = await Promise.all(achievementPromises);
-            leaderboards.achievements = achievementResults
-                .filter(r => r && r.count > 0)
-                .sort((a, b) => b.count - a.count)
-                .slice(0, 10);
+            }
         }
 
     } catch (error) {
