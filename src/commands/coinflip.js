@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -6,6 +6,11 @@ module.exports = {
 		.setDescription('flip a coin'),
 	async execute(interaction) {
 		const result = Math.random() < 0.5 ? 'heads' : 'tails';
-		await interaction.reply(`${interaction.user} flipped a coin and got **${result}**! 🪙`);
+		const embed = new EmbedBuilder()
+			.setTitle('the coin')
+			.setDescription(`${interaction.user} flipped a coin and got **${result}**! 🪙`)
+			.setColor(0xb03000);
+
+		await interaction.reply({ embeds: [embed] });
 	},
 };
