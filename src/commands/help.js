@@ -1,11 +1,11 @@
 const { SlashCommandBuilder, EmbedBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle } = require('discord.js');
 
 module.exports = {
-	data: new SlashCommandBuilder({ integration_types: [0,1] })
+	data: new SlashCommandBuilder()
 		.setName('help')
 		.setDescription('weenBot commands!'),
 	async execute(interaction) {
-        const currentserverid = interaction.guild.id
+        const currentserverid = message.guild.id
         const guildId = process.env.DEV_GUILD_ID;
 
         const fun = new ButtonBuilder()
