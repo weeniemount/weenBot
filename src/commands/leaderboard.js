@@ -106,6 +106,32 @@ module.exports = {
                 try {
                     const newLeaderboards = await fetchLeaderboards(interaction, currentScope, serverId);
 
+                    const newSelectMenu = new StringSelectMenuBuilder()
+                        .setCustomId('lb_select')
+                        .setPlaceholder('choose leaderboard type')
+                        .addOptions(
+                            {
+                                label: 'personal button clicks',
+                                description: 'most personal button clicks',
+                                value: 'personal_buttons',
+                                emoji: '🔘'
+                            },
+                            {
+                                label: 'server buttons',
+                                description: 'biggest server buttons',
+                                value: 'server_buttons',
+                                emoji: '🖥️'
+                            },
+                            {
+                                label: 'achievements',
+                                description: 'most achievements unlocked',
+                                value: 'achievements',
+                                emoji: '🏆'
+                            }
+                        );
+
+                    const newSelectRow = new ActionRowBuilder().addComponents(newSelectMenu);
+
                     const newButtonRow = new ActionRowBuilder()
                         .addComponents(
                             new ButtonBuilder()
@@ -122,12 +148,17 @@ module.exports = {
                         );
 
                     const newEmbed = createLeaderboardEmbed(newLeaderboards, currentScope, currentType, interaction);
+                    
                     await componentInteraction.editReply({ 
                         embeds: [newEmbed], 
-                        components: [selectRow, newButtonRow] 
+                        components: [newSelectRow, newButtonRow] 
                     });
                 } catch (error) {
                     console.error('Error updating leaderboard:', error);
+                    await componentInteraction.followUp({
+                        content: 'there was an error updating the leaderboard',
+                        ephemeral: true
+                    }).catch(console.error);
                 }
             });
 
@@ -165,7 +196,7 @@ module.exports = {
 
                     await interaction.editReply({ 
                         components: [disabledSelectRow, disabledButtonRow] 
-                    });
+                    }).catch(console.error);
                 } catch (error) {
                     console.error('Error disabling components:', error);
                 }
@@ -176,7 +207,7 @@ module.exports = {
             await interaction.editReply({ 
                 content: 'couldnt load the leaderboards sorry',
                 components: []
-            });
+            }).catch(console.error);
         }
     }
 };
