@@ -369,33 +369,36 @@ async function incrementCommandsRun() {
             throw new Error('Supabase not initialized');
         }
     }
-    
+
     try {
         const { data: existingData, error: fetchError } = await supabase
             .from('weenbotinfo')
-            .select('commands_run')
-            .order('created_at', { ascending: false })
+            .select('*')
             .limit(1)
             .single();
-        
+
         let newCount = 1;
+        let recordId = null;
+
         if (!fetchError && existingData) {
-            newCount = existingData.commands_run + 1;
+            newCount = (existingData.commands_run || 0) + 1;
+            recordId = existingData.id;
         }
-        
+
         const { data, error } = await supabase
             .from('weenbotinfo')
-            .insert([{ 
+            .upsert([{
+                id: recordId,
                 commands_run: newCount,
                 updated_at: new Date().toISOString()
             }])
             .select()
             .single();
-        
+
         if (error) {
             throw error;
         }
-        
+
         return newCount;
     } catch (err) {
         console.error('Error incrementing commands run:', err);
@@ -411,19 +414,29 @@ async function getCommandsRun() {
             throw new Error('Supabase not initialized');
         }
     }
-    
+
     try {
         const { data, error } = await supabase
             .from('weenbotinfo')
             .select('commands_run')
-            .order('created_at', { ascending: false })
             .limit(1)
             .single();
-        
-        if (error && error.code !== 'PGRST116') {
+
+        if (error && error.code === 'PGRST116') {
+            const { data: newData, error: insertError } = await supabase
+                .from('weenbotinfo')
+                .insert([{ commands_run: 0 }])
+                .select()
+                .single();
+
+            if (insertError) throw insertError;
+            return 0;
+        }
+
+        if (error) {
             throw error;
         }
-        
+
         return data ? data.commands_run : 0;
     } catch (err) {
         console.error('Error getting commands run:', err);

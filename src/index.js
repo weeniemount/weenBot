@@ -1,7 +1,7 @@
 const { Client, GatewayIntentBits, Collection } = require('discord.js');
 const fs = require('node:fs');
 const dotenv = require('dotenv');
-const { initializeDB, getWeenSpeakChannels } = require('./modules/db.js');
+const { initializeDB, getWeenSpeakChannels, incrementCommandsRun } = require('./modules/db.js');
 const { handleWeenSpeakMessage } = require('./modules/weenspeak.js');
 dotenv.config();
 
@@ -18,18 +18,17 @@ const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-
 client.commands = new Collection();
 let weenspeakChannels = new Set();
 const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
 
 for (const file of commandFiles) {
-  try {
-    const command = require(`./commands/${file}`);
-    client.commands.set(command.data.name, command);
-  } catch (error) {
-    console.error(`Error loading command ${file}:`, error);
-  }
+    try {
+        const command = require(`./commands/${file}`);
+        client.commands.set(command.data.name, command);
+    } catch (error) {
+        console.error(`Error loading command ${file}:`, error);
+    }
 }
 
 client.once('ready', async () => {
@@ -72,7 +71,8 @@ client.on('interactionCreate', async interaction => {
 
     try {
         await command.execute(interaction);
-        //await incrementCommandsRun();
+        
+        await incrementCommandsRun();
 
         if (interaction.commandName === 'weenspeak') {
             const channels = await getWeenSpeakChannels();
@@ -114,7 +114,6 @@ client.on('messageCreate', async (message) => {
         console.error('Error handling weenspeak message:', error);
     }
 });
-
 
 client.login(process.env.TOKEN);
 
