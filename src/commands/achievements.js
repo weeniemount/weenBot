@@ -56,7 +56,7 @@ module.exports = {
                        buttonInteraction.customId.endsWith(`_${targetUser.id}`);
             };
 
-            const collector = interaction.channel.createMessageComponentCollector({ filter });
+            const collector = interaction.channel.createMessageComponentCollector({ filter, time: 60000 });
 
             collector.on('collect', async (buttonInteraction) => {
                 if (buttonInteraction.user.id !== interaction.user.id) {
@@ -106,6 +106,34 @@ module.exports = {
                     });
                 }
             });            
+
+            collector.on('end', async (collected, reason) => {
+                if (reason === 'time') {
+                    try {
+                        const row = new ActionRowBuilder()
+                            .addComponents(
+                                new ButtonBuilder()
+                                    .setCustomId(`achievements_unlocked_${targetUser.id}`)
+                                    .setLabel('unlocked')
+                                    .setStyle(ButtonStyle.Success)
+                                    .setEmoji(emojiTable["weenachievement"]),
+                                new ButtonBuilder()
+                                    .setCustomId(`achievements_locked_${targetUser.id}`)
+                                    .setLabel('locked')
+                                    .setStyle(ButtonStyle.Secondary)
+                                    .setEmoji('🔒')
+                            );
+
+                        const embed = createUnlockedEmbed(targetUser, unlocked);
+                        await interaction.editReply({ 
+                            embeds: [embed], 
+                            components: [row] 
+                        });
+                    } catch (error) {
+                        console.error('Error updating message after collector end:', error);
+                    }
+                }
+            });
         } catch (error) {
             console.error('Error fetching achievements:', error);
             await interaction.reply({ 
