@@ -33,17 +33,17 @@ for (const file of commandFiles) {
 	};
 	Object.assign(json, extras);
 
+	if (json.name === 'restart' && process.env.DEV_GUILD_ID) {
+		json.guild_ids = [process.env.DEV_GUILD_ID];
+	}
+
 	commands.push(json);
 }
 const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
 
 (async () => {
 	try {
-		let thecountofemall = 0;
-		for (const file of commandFiles) {
-			thecountofemall++;
-		}
-
+		let thecountofemall = commands.length;
 		console.log(`Started refreshing ${thecountofemall} application (/) commands.`);
 
 		// Send array of objects, not a string
