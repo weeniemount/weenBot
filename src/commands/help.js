@@ -5,7 +5,7 @@ module.exports = {
 		.setName('help')
 		.setDescription('weenBot commands!'),
 	async execute(interaction) {
-        const currentserverid = message.guild.id
+        const currentserverid = interaction.guild.id
         const guildId = process.env.DEV_GUILD_ID;
 
         const fun = new ButtonBuilder()
