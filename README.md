@@ -30,6 +30,8 @@ in there, you need to paste in said token in the ``TOKEN`` variable
 
 also, you need to head to OAuth2 and copy and paste the client id into the ``CLIENT_ID`` variable.
 
+before you leave this step, you need to create/use a server for your bot so you can run stuff like ``/restart`` in it. edit the ``DEV_GUILD_ID`` env variable to be the id of your server, and the ``OWNER_USER_ID`` variable to be your discord user id
+
 ## setting up the bot's database
 head over to https://supabase.com and register for an account (if you dont have one). then, make a new database and title it however you want!
 
