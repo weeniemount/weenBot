@@ -5,8 +5,12 @@ module.exports = {
 		.setName('help')
 		.setDescription('weenBot commands!'),
 	async execute(interaction) {
-        const currentserverid = interaction.guild.id
         const guildId = process.env.DEV_GUILD_ID;
+        let currentserverid = null;
+
+        if (interaction.guild) {
+            currentserverid = interaction.guild.id;
+        }
 
         const fun = new ButtonBuilder()
             .setCustomId(`fun`)
@@ -31,13 +35,14 @@ module.exports = {
             .addComponents(fun, useful, devcommands);
         const row = new ActionRowBuilder()
             .addComponents(fun, useful);
-        
+
         const helpembed = new EmbedBuilder()
             .setColor(0xb03000)
             .setTitle(`weenBot help`)
             .addFields(
                 { name: 'choose a category!', value: 'press a button to display that category!' },
             )
+        
         const updateInteraction = async (interaction) => {
             const filter = i => i.user.id === interaction.user.id;
             const collector = interaction.channel.createMessageComponentCollector({ filter});
@@ -62,11 +67,14 @@ module.exports = {
                         .addFields({ name: `dev commands`, value: 'TBD' })
                     await confirmation.update({ embeds: [helpinfoembed], components: [new ActionRowBuilder().addComponents(backButton)] });
                 } else if (confirmation.customId === 'back') {
-                    await confirmation.update({ embeds: [helpembed], components: [currentserverid == guildId ? devrow : row], ephemeral: true });
+                    await confirmation.update({ embeds: [helpembed], components: [currentserverid == guildId ? devrow : row] });
                 }
             });
         }
-        await interaction.reply({ embeds: [helpembed], components: [currentserverid == guildId ? devrow : row], ephemeral: true });
+
+        const replyOptions = { embeds: [helpembed], components: [currentserverid == guildId ? devrow : row] };
+
+        await interaction.reply(replyOptions);
         updateInteraction(interaction);
 	},
 };
