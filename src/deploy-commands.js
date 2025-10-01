@@ -5,6 +5,8 @@ dotenv = require('dotenv');
 dotenv.config();
 
 const commands = [];
+const guildCommands = [];
+
 function getCommandFiles(dir) {
 	let files = [];
 	const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -17,7 +19,6 @@ function getCommandFiles(dir) {
 			files.push(fullPath);
 		}
 	}
-
 	return files;
 }
 
@@ -34,25 +35,37 @@ for (const file of commandFiles) {
 	Object.assign(json, extras);
 
 	if (json.name === 'restart' && process.env.DEV_GUILD_ID) {
-		json.guild_ids = [process.env.DEV_GUILD_ID];
+		guildCommands.push(json);
+	} else {
+		commands.push(json);
 	}
-
-	commands.push(json);
 }
+
 const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
 
 (async () => {
 	try {
-		let thecountofemall = commands.length;
-		console.log(`Started refreshing ${thecountofemall} application (/) commands.`);
+		console.log(`Started refreshing application (/) commands.`);
 
-		// Send array of objects, not a string
-		await rest.put(
-			Routes.applicationCommands(process.env.CLIENT_ID),
-			{ body: commands }
-		);
+		// global commands
+		if (commands.length > 0) {
+			await rest.put(
+				Routes.applicationCommands(process.env.CLIENT_ID),
+				{ body: commands }
+			);
+			console.log(`Registered ${commands.length} global commands.`);
+		}
 
-		console.log(`Successfully reloaded ${thecountofemall} application (/) commands.`);
+		// dev guild commands
+		if (guildCommands.length > 0 && process.env.DEV_GUILD_ID) {
+			await rest.put(
+				Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.DEV_GUILD_ID),
+				{ body: guildCommands }
+			);
+			console.log(`Registered ${guildCommands.length} guild commands in ${process.env.DEV_GUILD_ID}.`);
+		}
+
+		console.log(`Finished refreshing commands.`);
 	} catch (error) {
 		console.error(error);
 	}
