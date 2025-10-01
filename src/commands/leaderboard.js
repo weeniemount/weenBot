@@ -1,5 +1,12 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
-const { getButtonCount, initializeSupabase } = require('../modules/db.js');
+const { 
+    getButtonCount,
+    getLeaderboardPersonalButtons,
+    getLeaderboardServerButtons,
+    getLeaderboardAchievements,
+    getServerPersonalButtons,
+    getServerAchievements
+} = require('../modules/db.js');
 const { privateButtonReplies } = require('../modules/globals.js');
 
 module.exports = {
@@ -175,19 +182,6 @@ module.exports = {
 };
 
 async function fetchLeaderboards(interaction, scope, serverId) {
-    const dbModule = require('../modules/db.js');
-    let db = dbModule.db;
-    
-    if (!db) {
-        console.log('DB is null, initializing...');
-        initializeSupabase();
-        db = dbModule.db;
-        
-        if (!db) {
-            throw new Error('Failed to initialize database connection');
-        }
-    }
-
     const leaderboards = {
         personalButtons: [],
         serverButtons: [],
@@ -196,88 +190,60 @@ async function fetchLeaderboards(interaction, scope, serverId) {
 
     try {
         if (scope === 'global') {
-            const { data: personalData } = await db
-                .from('buttons')
-                .select('reference_id, count')
-                .eq('button_type', 'personal')
-                .order('count', { ascending: false })
-                .limit(10);
-
-            if (personalData) {
-                for (const entry of personalData) {
-                    try {
-                        const user = await interaction.client.users.fetch(entry.reference_id);
-                        leaderboards.personalButtons.push({
-                            name: user.username,
-                            id: entry.reference_id,
-                            count: entry.count
-                        });
-                    } catch (err) {
-                        leaderboards.personalButtons.push({
-                            name: 'unknown user',
-                            id: entry.reference_id,
-                            count: entry.count
-                        });
-                    }
+            const personalData = await getLeaderboardPersonalButtons(10);
+            
+            for (const entry of personalData) {
+                try {
+                    const user = await interaction.client.users.fetch(entry.reference_id);
+                    leaderboards.personalButtons.push({
+                        name: user.username,
+                        id: entry.reference_id,
+                        count: entry.count
+                    });
+                } catch (err) {
+                    leaderboards.personalButtons.push({
+                        name: 'unknown user',
+                        id: entry.reference_id,
+                        count: entry.count
+                    });
                 }
             }
 
-            const { data: serverData } = await db
-                .from('buttons')
-                .select('reference_id, count')
-                .eq('button_type', 'server')
-                .order('count', { ascending: false })
-                .limit(10);
-
-            if (serverData) {
-                for (const entry of serverData) {
-                    try {
-                        const guild = await interaction.client.guilds.fetch(entry.reference_id);
-                        leaderboards.serverButtons.push({
-                            name: guild.name,
-                            id: entry.reference_id,
-                            count: entry.count
-                        });
-                    } catch (err) {
-                        leaderboards.serverButtons.push({
-                            name: 'unknown server',
-                            id: entry.reference_id,
-                            count: entry.count
-                        });
-                    }
+            const serverData = await getLeaderboardServerButtons(10);
+            
+            for (const entry of serverData) {
+                try {
+                    const guild = await interaction.client.guilds.fetch(entry.reference_id);
+                    leaderboards.serverButtons.push({
+                        name: guild.name,
+                        id: entry.reference_id,
+                        count: entry.count
+                    });
+                } catch (err) {
+                    leaderboards.serverButtons.push({
+                        name: 'unknown server',
+                        id: entry.reference_id,
+                        count: entry.count
+                    });
                 }
             }
 
-            const { data: achievementData } = await db
-                .from('user_achievements')
-                .select('user_id, achievements')
-                .order('achievements', { ascending: false })
-                .limit(10);
-
-            if (achievementData) {
-                const sorted = achievementData
-                    .map(entry => ({
-                        user_id: entry.user_id,
-                        count: Array.isArray(entry.achievements) ? entry.achievements.length : 0
-                    }))
-                    .sort((a, b) => b.count - a.count)
-                    .slice(0, 10);
-
-                for (const entry of sorted) {
-                    try {
-                        const user = await interaction.client.users.fetch(entry.user_id);
-                        leaderboards.achievements.push({
-                            name: user.username,
-                            id: entry.user_id,
-                            count: entry.count
-                        });
-                    } catch (err) {
-                        leaderboards.achievements.push({
-                            name: 'unknown user',
-                            id: entry.user_id,
-                            count: entry.count
-                        });
-                    }
+            const achievementData = await getLeaderboardAchievements(10);
+            
+            for (const entry of achievementData) {
+                try {
+                    const user = await interaction.client.users.fetch(entry.user_id);
+                    leaderboards.achievements.push({
+                        name: user.username,
+                        id: entry.user_id,
+                        count: entry.count
+                    });
+                } catch (err) {
+                    leaderboards.achievements.push({
+                        name: 'unknown user',
+                        id: entry.user_id,
+                        count: entry.count
+                    });
                 }
             }
 
@@ -289,29 +255,22 @@ async function fetchLeaderboards(interaction, scope, serverId) {
             if (memberIds.length < 10) {
                 try {
                     await guild.members.fetch({ limit: 100 });
+                    memberIds.length = 0;
                     memberIds.push(...Array.from(guild.members.cache.keys()));
                 } catch (err) {
                     console.error('Could not fetch additional members:', err);
                 }
             }
 
-            const { data: personalData } = await db
-                .from('buttons')
-                .select('reference_id, count')
-                .eq('button_type', 'personal')
-                .in('reference_id', memberIds)
-                .order('count', { ascending: false })
-                .limit(10);
-
-            if (personalData) {
-                for (const entry of personalData) {
-                    const member = guild.members.cache.get(entry.reference_id);
-                    leaderboards.personalButtons.push({
-                        name: member ? member.user.username : 'unknown user',
-                        id: entry.reference_id,
-                        count: entry.count
-                    });
-                }
+            const personalData = await getServerPersonalButtons(memberIds, 10);
+            
+            for (const entry of personalData) {
+                const member = guild.members.cache.get(entry.reference_id);
+                leaderboards.personalButtons.push({
+                    name: member ? member.user.username : 'unknown user',
+                    id: entry.reference_id,
+                    count: entry.count
+                });
             }
 
             const serverButtonCount = await getButtonCount('server', serverId);
@@ -323,29 +282,15 @@ async function fetchLeaderboards(interaction, scope, serverId) {
                 });
             }
 
-            const { data: achievementData } = await db
-                .from('user_achievements')
-                .select('user_id, achievements')
-                .in('user_id', memberIds);
-
-            if (achievementData) {
-                const sorted = achievementData
-                    .map(entry => ({
-                        user_id: entry.user_id,
-                        count: Array.isArray(entry.achievements) ? entry.achievements.length : 0
-                    }))
-                    .filter(entry => entry.count > 0)
-                    .sort((a, b) => b.count - a.count)
-                    .slice(0, 10);
-
-                for (const entry of sorted) {
-                    const member = guild.members.cache.get(entry.user_id);
-                    leaderboards.achievements.push({
-                        name: member ? member.user.username : 'unknown user',
-                        id: entry.user_id,
-                        count: entry.count
-                    });
-                }
+            const achievementData = await getServerAchievements(memberIds, 10);
+            
+            for (const entry of achievementData) {
+                const member = guild.members.cache.get(entry.user_id);
+                leaderboards.achievements.push({
+                    name: member ? member.user.username : 'unknown user',
+                    id: entry.user_id,
+                    count: entry.count
+                });
             }
         }
 

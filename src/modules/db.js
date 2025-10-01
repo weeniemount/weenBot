@@ -512,6 +512,131 @@ async function updateUserAchievements(userId, achievements, tracking) {
     }
 }
 
+async function getLeaderboardPersonalButtons(limit = 10) {
+    if (!supabase) {
+        throw new Error('Supabase not initialized');
+    }
+
+    try {
+        const { data, error } = await supabase
+            .from('buttons')
+            .select('reference_id, count')
+            .eq('button_type', 'personal')
+            .order('count', { ascending: false })
+            .limit(limit);
+
+        if (error) throw error;
+        return data || [];
+    } catch (err) {
+        console.error('Error getting personal button leaderboard:', err);
+        return [];
+    }
+}
+
+async function getLeaderboardServerButtons(limit = 10) {
+    if (!supabase) {
+        throw new Error('Supabase not initialized');
+    }
+
+    try {
+        const { data, error } = await supabase
+            .from('buttons')
+            .select('reference_id, count')
+            .eq('button_type', 'server')
+            .order('count', { ascending: false })
+            .limit(limit);
+
+        if (error) throw error;
+        return data || [];
+    } catch (err) {
+        console.error('Error getting server button leaderboard:', err);
+        return [];
+    }
+}
+
+async function getLeaderboardAchievements(limit = 10) {
+    if (!supabase) {
+        throw new Error('Supabase not initialized');
+    }
+
+    try {
+        const { data, error } = await supabase
+            .from('user_achievements')
+            .select('user_id, achievements');
+
+        if (error) throw error;
+        
+        if (!data) return [];
+
+        const sorted = data
+            .map(entry => ({
+                user_id: entry.user_id,
+                count: Array.isArray(entry.achievements) ? entry.achievements.length : 0
+            }))
+            .filter(entry => entry.count > 0)
+            .sort((a, b) => b.count - a.count)
+            .slice(0, limit);
+
+        return sorted;
+    } catch (err) {
+        console.error('Error getting achievement leaderboard:', err);
+        return [];
+    }
+}
+
+async function getServerPersonalButtons(memberIds, limit = 10) {
+    if (!supabase) {
+        throw new Error('Supabase not initialized');
+    }
+
+    try {
+        const { data, error } = await supabase
+            .from('buttons')
+            .select('reference_id, count')
+            .eq('button_type', 'personal')
+            .in('reference_id', memberIds)
+            .order('count', { ascending: false })
+            .limit(limit);
+
+        if (error) throw error;
+        return data || [];
+    } catch (err) {
+        console.error('Error getting server personal buttons:', err);
+        return [];
+    }
+}
+
+async function getServerAchievements(memberIds, limit = 10) {
+    if (!supabase) {
+        throw new Error('Supabase not initialized');
+    }
+
+    try {
+        const { data, error } = await supabase
+            .from('user_achievements')
+            .select('user_id, achievements')
+            .in('user_id', memberIds);
+
+        if (error) throw error;
+        
+        if (!data) return [];
+
+        const sorted = data
+            .map(entry => ({
+                user_id: entry.user_id,
+                count: Array.isArray(entry.achievements) ? entry.achievements.length : 0
+            }))
+            .filter(entry => entry.count > 0)
+            .sort((a, b) => b.count - a.count)
+            .slice(0, limit);
+
+        return sorted;
+    } catch (err) {
+        console.error('Error getting server achievements:', err);
+        return [];
+    }
+}
+
 module.exports = {
     db: supabase,
     addWeenSpeakChannel,
@@ -533,5 +658,11 @@ module.exports = {
     incrementCommandsRun,
     getCommandsRun,
     getOrCreateUserAchievements,
-    updateUserAchievements
+    updateUserAchievements,
+
+    getLeaderboardPersonalButtons,
+    getLeaderboardServerButtons,
+    getLeaderboardAchievements,
+    getServerPersonalButtons,
+    getServerAchievements
 };
