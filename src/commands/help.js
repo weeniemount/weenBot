@@ -1,16 +1,16 @@
 const { SlashCommandBuilder, EmbedBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle } = require('discord.js');
 
 module.exports = {
-	data: new SlashCommandBuilder()
-		.setName('help')
-		.setDescription('weenBot commands!'),
-	async execute(interaction) {
+    data: new SlashCommandBuilder({ integration_types: [0, 1], contexts: [0, 1, 2] })
+        .setName('help')
+        .setDescription('weenBot commands!'),
+    async execute(interaction) {
         const guildId = process.env.DEV_GUILD_ID;
-        let currentserverid = null;
-
-        if (interaction.guild) {
-            currentserverid = interaction.guild.id;
-        }
+        
+        const isInDM = !interaction.guild;
+        const isDevGuild = interaction.guild && interaction.guild.id === guildId;
+        
+        const showDevCommands = isDevGuild && !isInDM;
 
         const fun = new ButtonBuilder()
             .setCustomId(`fun`)
@@ -47,8 +47,8 @@ module.exports = {
             const filter = i => i.user.id === confirmation.user.id;
 
             if (confirmation.user.id !== interaction.user.id) {
-				return confirmation.reply({ content: privateButtonReplies(), ephemeral: true });
-			}
+                return confirmation.reply({ content: 'These buttons are not for you!', ephemeral: true });
+            }
 
             let collectorChannel;
 
@@ -82,14 +82,18 @@ module.exports = {
                         .addFields({ name: `dev commands`, value: '/restart - restart weenBot. this will only work if ran with PM2.' })
                     await confirmation.update({ embeds: [helpinfoembed], components: [new ActionRowBuilder().addComponents(backButton)] });
                 } else if (confirmation.customId === 'back') {
-                    await confirmation.update({ embeds: [helpembed], components: [currentserverid == guildId ? devrow : row] });
+                    const currentIsInDM = !confirmation.guild;
+                    const currentIsDevGuild = confirmation.guild && confirmation.guild.id === guildId;
+                    const currentShowDevCommands = currentIsDevGuild && !currentIsInDM;
+                    
+                    await confirmation.update({ embeds: [helpembed], components: [currentShowDevCommands ? devrow : row] });
                 }
             });
         }
 
-        const replyOptions = { embeds: [helpembed], components: [currentserverid == guildId ? devrow : row] };
+        const replyOptions = { embeds: [helpembed], components: [showDevCommands ? devrow : row] };
 
         await interaction.reply(replyOptions);
         updateInteraction(interaction);
-	},
+    },
 };
