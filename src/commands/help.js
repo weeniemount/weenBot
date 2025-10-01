@@ -43,9 +43,24 @@ module.exports = {
                 { name: 'choose a category!', value: 'press a button to display that category!' },
             )
         
-        const updateInteraction = async (interaction) => {
-            const filter = i => i.user.id === interaction.user.id;
-            const collector = interaction.channel.createMessageComponentCollector({ filter});
+        const updateInteraction = async (confirmation) => {
+            const filter = i => i.user.id === confirmation.user.id;
+
+            if (confirmation.user.id !== interaction.user.id) {
+				return confirmation.reply({ content: privateButtonReplies(), ephemeral: true });
+			}
+
+            let collectorChannel;
+
+            if (confirmation.channel) {
+                collectorChannel = confirmation.channel;
+            } else if (confirmation.guild) {
+                collectorChannel = confirmation.guild.channels.cache.get(confirmation.channelId);
+            }
+
+            const collector = collectorChannel ? collectorChannel.createMessageComponentCollector({ filter }) : null;
+
+            if (!collector) return;
 
             collector.on('collect', async confirmation => {
                 if (confirmation.customId === 'fun') {
@@ -58,7 +73,7 @@ module.exports = {
                     const helpinfoembed = new EmbedBuilder()
                         .setColor(0xb03000)
                         .setTitle(`useful category`)
-                        .addFields({ name: `useful`, value: '/achievements - view all your achievements\n/settings - customize your weenBot user settings\n/calculator - a calculator\n/stats - view your peak stats\n/gemini - ask gemini a question\n/help - the thing you are viewing right now\n/ping - check if weenBot is even responding\n/weenspeak - for server admins! set up/remove weenspeak for weenBot to yap in a channel' })
+                        .addFields({ name: `useful`, value: '/achievements - view all your achievements\n/settings - customize your weenBot user settings\n/calculator - a calculator\n/stats - view your peak stats\n/gemini - ask gemini a question\n/help - the thing you are viewing right now\n/ping - check if weenBot is even responding\n/weenspeak - for server admins! set up/remove weenspeak for weenBot to yap in a channel\n/weenbotinfo - view some info about weenbot' })
                     await confirmation.update({ embeds: [helpinfoembed], components: [new ActionRowBuilder().addComponents(backButton)] });
                 } else if (confirmation.customId === 'devcommands') {
                     const helpinfoembed = new EmbedBuilder()
