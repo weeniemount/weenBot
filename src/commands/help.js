@@ -67,7 +67,7 @@ module.exports = {
                     const helpinfoembed = new EmbedBuilder()
                         .setColor(0xb03000)
                         .setTitle(`fun category`)
-                        .addFields({ name: `fun`, value: '/bubblewrap - make some spoiler bubble wrap!\n/button - a button to increment that can be personal, global or server count.\n/coinflip - flip a coin!\n/gary - get a picture of gary the cat!\n/goober - get a picture of goober the cat!\n/nuke - nuke someone out of boredom\n/roll - roll a dice from 1-6\n/slots - the slots\n/tictactoe - play tictactoe with someone (or weenBot)\n/weenie - send a weenie'})
+                        .addFields({ name: `fun`, value: '/bubblewrap - make some spoiler bubble wrap!\n/button - a button to increment that can be personal, global or server count.\n/coinflip - flip a coin!\n/gary - get a picture of gary the cat!\n/goober - get a picture of goober the cat!\n/nuke - nuke someone out of boredom\n/roll - roll a dice from 1-6\n/slots - the slots\n/tictactoe - play tictactoe with someone (or weenBot)\n/weenie - send a weenie\n/randompissandshitimage - send a random pissandshitimages image'})
                     await confirmation.update({ embeds: [helpinfoembed], components: [new ActionRowBuilder().addComponents(backButton)] });
                 } else if (confirmation.customId === 'useful') {
                     const helpinfoembed = new EmbedBuilder()
