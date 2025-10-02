@@ -21,8 +21,14 @@ module.exports = {
       const embed = new EmbedBuilder()
         .setTitle('random pissandshitimages image')
         .setColor(0xb03000)
-        .setImage(`https://pissandshitimages.com/api/image?id=${imageData.id}&raw=true`)
-        .setTimestamp(new Date(imageData.created_at));
+        .setImage(`https://pissandshitimages.com/api/image?id=${imageData.id}&raw=true`);
+      
+      if (imageData.created_at) {
+        const timestamp = new Date(imageData.created_at);
+        if (!isNaN(timestamp.getTime())) {
+          embed.setTimestamp(timestamp);
+        }
+      }
 
       if (imageData.uploader) {
         embed.setFooter({
