@@ -10,7 +10,7 @@ module.exports = {
     await interaction.deferReply();
 
     try {
-      const response = await fetch('https://pissandshitimages.com/api/randomimage?raw=false');
+      const response = await fetch('https://pasi.googleballs.com/api/randomimage?raw=false');
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -21,7 +21,7 @@ module.exports = {
       const embed = new EmbedBuilder()
         .setTitle('random pissandshitimages image')
         .setColor(0xb03000)
-        .setImage(`https://pissandshitimages.com/api/image?id=${imageData.id}&raw=true`);
+        .setImage(`https://pasi.googleballs.com/api/image?id=${imageData.id}&raw=true`);
       
       if (imageData.created_at) {
         const timestamp = new Date(imageData.created_at);
@@ -62,4 +62,5 @@ module.exports = {
       });
     }
   }
+
 };
