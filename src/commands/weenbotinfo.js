@@ -27,9 +27,10 @@ module.exports = {
             .addFields(
                 { name: 'bot uptime', value: uptimemsg },
                 { name: 'commands ran', value: String(commandsran) },
-                { name: 'version', value: 'idk yet' },
+                { name: 'version', value: 'v1.0' },
             )
             .setFooter({ text: `made with love and ween by @weeniemount`, iconURL: 'attachment://weeniemount.png' });
         await interaction.reply({ embeds: [infoembed], files: [file, weeniemount] });
     },
+
 };
