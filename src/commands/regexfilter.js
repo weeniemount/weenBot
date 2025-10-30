@@ -35,7 +35,12 @@ module.exports = {
                             { name: 'delete', value: 'delete' },
                             { name: 'delete + warn', value: 'warn' },
                             { name: 'delete + timeout', value: 'timeout' }
-                        )))
+                        ))
+                .addBooleanOption(option =>
+                    option
+                        .setName('affects_admins')
+                        .setDescription('whether this filter should affect administrators')
+                        .setRequired(false)))
         .addSubcommand(subcommand =>
             subcommand
                 .setName('remove')
@@ -73,7 +78,12 @@ module.exports = {
                             { name: 'delete', value: 'delete' },
                             { name: 'delete + warn', value: 'warn' },
                             { name: 'delete + timeout', value: 'timeout' }
-                        )))
+                        ))
+                .addBooleanOption(option =>
+                    option
+                        .setName('affects_admins')
+                        .setDescription('whether this filter should affect administrators')
+                        .setRequired(false)))
         .addSubcommand(subcommand =>
             subcommand
                 .setName('list')
@@ -130,17 +140,20 @@ async function handleAdd(interaction, serverId) {
     const pattern = interaction.options.getString('pattern');
     const name = interaction.options.getString('name');
     const action = interaction.options.getString('action') || 'delete';
+    const affectsAdmins = interaction.options.getBoolean('affects_admins') || false;
 
+    // Test regex pattern with advanced features support
     try {
-        new RegExp(pattern, 'i');
+        // Test with both case-insensitive and multiline flags to support advanced features
+        new RegExp(pattern, 'gim');
     } catch (error) {
         return interaction.editReply({
-            content: `invalid regex pattern: ${error.message}`
+            content: `invalid regex pattern: ${error.message}\n\n**tip:** this bot supports advanced regex features like:\n• look-ahead: \`(?=pattern)\`\n• look-behind: \`(?<=pattern)\`\n• negative look-ahead: \`(?!pattern)\`\n• negative look-behind: \`(?<!pattern)\`\n• word boundaries: \`\\b\`\n• character classes: \`[a-z]\`, \`\\d\`, \`\\s\``
         });
     }
 
     try {
-        const filter = await addRegexFilter(serverId, pattern, name, action);
+        const filter = await addRegexFilter(serverId, pattern, name, action, affectsAdmins);
 
         const embed = new EmbedBuilder()
             .setColor(0x57F287)
@@ -149,6 +162,7 @@ async function handleAdd(interaction, serverId) {
                 { name: 'id', value: `${filter.id}`, inline: true },
                 { name: 'name', value: name, inline: true },
                 { name: 'action', value: action, inline: true },
+                { name: 'affects admins', value: affectsAdmins ? 'yes' : 'no', inline: true },
                 { name: 'pattern', value: `\`${pattern}\`` }
             )
             .setTimestamp();
@@ -192,8 +206,9 @@ async function handleUpdate(interaction, serverId) {
     const newPattern = interaction.options.getString('pattern');
     const newName = interaction.options.getString('name');
     const newAction = interaction.options.getString('action');
+    const newAffectsAdmins = interaction.options.getBoolean('affects_admins');
 
-    if (!newPattern && !newName && !newAction) {
+    if (!newPattern && !newName && !newAction && newAffectsAdmins === null) {
         return interaction.editReply({
             content: 'you must provide at least one field to update'
         });
@@ -201,10 +216,10 @@ async function handleUpdate(interaction, serverId) {
 
     if (newPattern) {
         try {
-            new RegExp(newPattern, 'i');
+            new RegExp(newPattern, 'gim');
         } catch (error) {
             return interaction.editReply({
-                content: `invalid regex pattern: ${error.message}`
+                content: `invalid regex pattern: ${error.message}\n\n**tip:** this bot supports advanced regex features like:\n• look-ahead: \`(?=pattern)\`\n• look-behind: \`(?<=pattern)\`\n• negative look-ahead: \`(?!pattern)\`\n• negative look-behind: \`(?<!pattern)\`\n• word boundaries: \`\\b\`\n• character classes: \`[a-z]\`, \`\\d\`, \`\\s\``
             });
         }
     }
@@ -214,6 +229,7 @@ async function handleUpdate(interaction, serverId) {
         if (newPattern) updates.pattern = newPattern;
         if (newName) updates.name = newName;
         if (newAction) updates.action = newAction;
+        if (newAffectsAdmins !== null) updates.affects_admins = newAffectsAdmins;
 
         const filter = await updateRegexFilter(serverId, filterId, updates);
 
@@ -230,6 +246,7 @@ async function handleUpdate(interaction, serverId) {
                 { name: 'id', value: `${filter.id}`, inline: true },
                 { name: 'name', value: filter.name, inline: true },
                 { name: 'action', value: filter.action, inline: true },
+                { name: 'affects admins', value: filter.affects_admins ? 'yes' : 'no', inline: true },
                 { name: 'pattern', value: `\`${filter.pattern}\`` }
             )
             .setTimestamp();
@@ -265,9 +282,11 @@ async function handleList(interaction, serverId) {
                 'timeout': '⏰'
             }[filter.action] || '🗑️';
 
+            const adminIcon = filter.affects_admins ? '👑' : '🚫';
+            
             embed.addFields({
-                name: `${actionEmoji} ${filter.name} (ID: ${filter.id})`,
-                value: `\`\`\`${filter.pattern}\`\`\``,
+                name: `${actionEmoji} ${filter.name} (ID: ${filter.id}) ${adminIcon}`,
+                value: `\`\`\`${filter.pattern}\`\`\`\n**affects admins:** ${filter.affects_admins ? 'yes' : 'no'}`,
                 inline: false
             });
         }

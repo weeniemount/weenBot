@@ -50,6 +50,7 @@ CREATE TABLE regex_filters (
     name TEXT NOT NULL,
     action TEXT DEFAULT 'delete' CHECK (action IN ('delete', 'warn', 'timeout')),
     enabled BOOLEAN DEFAULT true,
+    affects_admins BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -667,7 +668,7 @@ async function getServerAchievements(memberIds, limit = 10) {
     }
 }
 
-async function addRegexFilter(serverId, pattern, name, action = 'delete') {
+async function addRegexFilter(serverId, pattern, name, action = 'delete', affectsAdmins = false) {
     if (!supabase) {
         throw new Error('Supabase not initialized');
     }
@@ -680,7 +681,8 @@ async function addRegexFilter(serverId, pattern, name, action = 'delete') {
                 pattern: pattern,
                 name: name,
                 action: action,
-                enabled: true
+                enabled: true,
+                affects_admins: affectsAdmins
             }])
             .select()
             .single();
