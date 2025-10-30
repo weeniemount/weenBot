@@ -43,6 +43,36 @@ INSERT INTO buttons (button_type, reference_id, count)
 VALUES ('global', 'global', 0) 
 ON CONFLICT (button_type, reference_id) DO NOTHING;
 
+CREATE TABLE regex_filters (
+    id SERIAL PRIMARY KEY,
+    server_id TEXT NOT NULL,
+    pattern TEXT NOT NULL,
+    name TEXT NOT NULL,
+    action TEXT DEFAULT 'delete' CHECK (action IN ('delete', 'warn', 'timeout')),
+    enabled BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_regex_filters_server ON regex_filters(server_id);
+CREATE INDEX idx_regex_filters_enabled ON regex_filters(enabled);
+CREATE INDEX idx_regex_filters_server_enabled ON regex_filters(server_id, enabled);
+
+CREATE TABLE regex_filter_logs (
+    id SERIAL PRIMARY KEY,
+    filter_id INTEGER REFERENCES regex_filters(id) ON DELETE CASCADE,
+    server_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    channel_id TEXT NOT NULL,
+    message_content TEXT,
+    action_taken TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_regex_filter_logs_server ON regex_filter_logs(server_id);
+CREATE INDEX idx_regex_filter_logs_user ON regex_filter_logs(user_id);
+CREATE INDEX idx_regex_filter_logs_created ON regex_filter_logs(created_at);
+
 okay thank you for coming to my WEEN talk
 */
 
@@ -637,6 +667,125 @@ async function getServerAchievements(memberIds, limit = 10) {
     }
 }
 
+async function addRegexFilter(serverId, pattern, name, action = 'delete') {
+    if (!supabase) {
+        throw new Error('Supabase not initialized');
+    }
+
+    try {
+        const { data, error } = await supabase
+            .from('regex_filters')
+            .insert([{
+                server_id: serverId,
+                pattern: pattern,
+                name: name,
+                action: action,
+                enabled: true
+            }])
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data;
+    } catch (err) {
+        console.error('Error adding regex filter:', err);
+        throw err;
+    }
+}
+
+async function removeRegexFilter(serverId, filterId) {
+    if (!supabase) {
+        throw new Error('Supabase not initialized');
+    }
+
+    try {
+        const { data, error } = await supabase
+            .from('regex_filters')
+            .delete()
+            .eq('server_id', serverId)
+            .eq('id', filterId)
+            .select();
+
+        if (error) throw error;
+        return data && data.length > 0;
+    } catch (err) {
+        console.error('Error removing regex filter:', err);
+        throw err;
+    }
+}
+
+async function updateRegexFilter(serverId, filterId, updates) {
+    if (!supabase) {
+        throw new Error('Supabase not initialized');
+    }
+
+    try {
+        const updateData = {
+            ...updates,
+            updated_at: new Date().toISOString()
+        };
+
+        const { data, error } = await supabase
+            .from('regex_filters')
+            .update(updateData)
+            .eq('server_id', serverId)
+            .eq('id', filterId)
+            .select()
+            .single();
+
+        if (error && error.code === 'PGRST116') {
+            return null;
+        }
+
+        if (error) throw error;
+        return data;
+    } catch (err) {
+        console.error('Error updating regex filter:', err);
+        throw err;
+    }
+}
+
+async function getServerRegexFilters(serverId) {
+    if (!supabase) {
+        throw new Error('Supabase not initialized');
+    }
+
+    try {
+        const { data, error } = await supabase
+            .from('regex_filters')
+            .select('*')
+            .eq('server_id', serverId)
+            .eq('enabled', true)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        return data || [];
+    } catch (err) {
+        console.error('Error getting server regex filters:', err);
+        return [];
+    }
+}
+
+async function getAllRegexFilters() {
+    if (!supabase) {
+        throw new Error('Supabase not initialized');
+    }
+
+    try {
+        const { data, error } = await supabase
+            .from('regex_filters')
+            .select('*')
+            .eq('enabled', true);
+
+        if (error) throw error;
+        return data || [];
+    } catch (err) {
+        console.error('Error getting all regex filters:', err);
+        return [];
+    }
+}
+
+
 module.exports = {
     db: supabase,
     addWeenSpeakChannel,
@@ -664,5 +813,11 @@ module.exports = {
     getLeaderboardServerButtons,
     getLeaderboardAchievements,
     getServerPersonalButtons,
-    getServerAchievements
+    getServerAchievements,
+
+    addRegexFilter,
+    removeRegexFilter,
+    updateRegexFilter,
+    getServerRegexFilters,
+    getAllRegexFilters
 };
