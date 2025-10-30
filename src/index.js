@@ -1,8 +1,7 @@
 const { Client, GatewayIntentBits, Collection } = require('discord.js');
 const fs = require('node:fs');
 const dotenv = require('dotenv');
-const { initializeDB, getWeenSpeakChannels, incrementCommandsRun } = require('./modules/db.js');
-const { handleWeenSpeakMessage } = require('./modules/weenspeak.js');
+const { initializeDB, incrementCommandsRun } = require('./modules/db.js');
 dotenv.config();
 
 const client = new Client({ 
@@ -19,7 +18,6 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 client.commands = new Collection();
-let weenspeakChannels = new Set();
 const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
 
 for (const file of commandFiles) {
@@ -31,14 +29,26 @@ for (const file of commandFiles) {
     }
 }
 
+const eventFiles = fs.readdirSync('./events').filter(file => file.endsWith('.js'));
+
+for (const file of eventFiles) {
+    try {
+        const event = require(`./events/${file}`);
+        if (event.once) {
+            client.once(event.name, (...args) => event.execute(...args));
+        } else {
+            client.on(event.name, (...args) => event.execute(...args));
+        }
+        console.log(`Loaded event: ${event.name}`);
+    } catch (error) {
+        console.error(`Error loading event ${file}:`, error);
+    }
+}
+
 client.once('ready', async () => {
     console.log('weenBot is ready!');
 
     await initializeDB();
-    
-    const channels = await getWeenSpeakChannels();
-    weenspeakChannels = new Set(channels);
-    console.log(`Loaded ${weenspeakChannels.size} weenspeak channels`);
 
     updatePresence();
     setInterval(updatePresence, 10 * 60 * 1000);
@@ -75,9 +85,9 @@ client.on('interactionCreate', async interaction => {
         await incrementCommandsRun();
 
         if (interaction.commandName === 'weenspeak') {
-            const channels = await getWeenSpeakChannels();
-            weenspeakChannels = new Set(channels);
-            console.log(`Refreshed weenspeak channels: ${weenspeakChannels.size} total`);
+            // Refresh weenspeak channels in the event handler
+            const { refreshWeenspeakChannels } = require('./events/messageCreate.js');
+            await refreshWeenspeakChannels();
         }
     } catch (error) {
         console.error(`Error executing command ${interaction.commandName}:`, error);
@@ -99,21 +109,6 @@ client.on('interactionCreate', async interaction => {
     }
 });
 
-client.on('messageCreate', async (message) => {
-    if (message.author.bot || !weenspeakChannels.has(message.channel.id)) {
-        return;
-    }
-    
-    if (!process.env.GEMINI_API_KEY) {
-        return;
-    }
-
-    try {
-        await handleWeenSpeakMessage(message);
-    } catch (error) {
-        console.error('Error handling weenspeak message:', error);
-    }
-});
 
 client.login(process.env.TOKEN);
 
