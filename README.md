@@ -8,6 +8,10 @@ this bot was inspired by Cat Bot and other bots!
 
 basically theres fun commands like /bubblewrap or /button!
 
+theres also some moderation commands (only works if the person running it has administrator privleages) like /regexfilter which is like discord's automod but it supports look-behind's and works on admins (which includes yourself too) if you want that.
+
+the bot by default also only can send messages and create commands in servers, so if you wanna use moderation stuff you have to give it something like manage messages for /regexfilter
+
 theres also achievements so thats cool
 # setting up the bot
 first, you need to go to https://discord.com/developers/applications/.
