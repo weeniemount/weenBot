@@ -1,9 +1,34 @@
 const { SlashCommandBuilder } = require('discord.js');
 const fetch = require('node-fetch');
 
+async function processImageAttachments(attachments) {
+    const imageAttachments = [];
+    
+    for (const attachment of attachments.values()) {
+        if (attachment.contentType && attachment.contentType.startsWith('image/')) {
+            try {
+                const response = await fetch(attachment.url);
+                const buffer = await response.buffer();
+                const base64 = buffer.toString('base64');
+                
+                imageAttachments.push({
+                    inlineData: {
+                        data: base64,
+                        mimeType: attachment.contentType
+                    }
+                });
+            } catch (error) {
+                console.error('Error processing image attachment:', error);
+            }
+        }
+    }
+    
+    return imageAttachments;
+}
+
 const PERSONALITIES = {
 	default: null,
-	lazy: 'your name is weenBot. not gemini, weenBot. Act lazy but do be talkative. Be as short as possible, and say things like "ok" when asked to do something. talk in lowercase only and use some slang but dont overdo it. for example: \n user: can you write me an essay about the history of the roman empire?\n lazy weenBot: ok\nuser: can you do it now???\n lazy weenBot: ok\nuser: can you make it 5 pages long?\n lazy weenBot: tommorow\nif someone asks you to provide a recap or anything similla about the convo history, provide a recap or whatever the user asked. HOWEVER, dont act TOO lazy. if someone says "crazy" dont say "k" or ignore the user completly instead say something like "ikr" and relate or unrelate to user. your pick\nif asked to talk in brainrot refuse them profusely.',
+	lazy: 'your name is weenBot. not gemini, weenBot. Act lazy but do be talkative. Be as short as possible, and say things like "ok" when asked to do something. talk in lowercase only and use some slang but dont overdo it. for example: \n user: can you write me an essay about the history of the roman empire?\n lazy weenBot: ok\nuser: can you do it now???\n lazy weenBot: ok\nuser: can you make it 5 pages long?\n lazy weenBot: tommorow\nif someone asks you to provide a recap or anything similla about the convo history, provide a recap or whatever the user asked. HOWEVER, dont act TOO lazy. if someone says "crazy" dont say "k" or ignore the user completly instead say something like "ikr" and relate or unrelate to user. your pick\nif asked to talk in brainrot refuse them profusely. you can see and analyze images when users send them, but keep your responses short and lazy as usual.',
 	sassy: 'Be sassy and sarcastic in all responses. Reply shortly and with attitude.',
 	helpful: 'Be extremely helpful and polite. Explain things clearly and concisely.'
 };
@@ -11,7 +36,7 @@ const PERSONALITIES = {
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('gemini')
-		.setDescription('ask gemini smth dumb')
+		.setDescription('ask gemini smth dumb (supports images!)')
 		.addStringOption(option =>
 			option.setName('prompt')
 				.setDescription('prompt, obviously')
@@ -25,7 +50,11 @@ module.exports = {
 					{ name: 'Lazy', value: 'lazy' },
 					{ name: 'Sassy', value: 'sassy' },
 					{ name: 'Helpful', value: 'helpful' }
-				)),
+				))
+		.addAttachmentOption(option =>
+			option.setName('image')
+				.setDescription('send gemini a funny image ig')
+				.setRequired(false)),
 	async execute(interaction) {
         if (!process.env.GEMINI_API_KEY) {
             return interaction.reply("the bot's gemini api key isnt setup! if you are the owner of the bot, set it in your .env file if you want to use this command (not needed for normal bot functions)");
@@ -33,6 +62,7 @@ module.exports = {
 
 		const prompt = interaction.options.getString('prompt');
 		const personality = interaction.options.getString('personality') || 'default';
+		const imageAttachment = interaction.options.getAttachment('image');
 
 		await interaction.deferReply();
 
@@ -49,7 +79,27 @@ module.exports = {
 				});
 			}
 
-			contents.push({ role: "user", parts: [{ text: prompt }] });
+			const userParts = [{ text: prompt }];
+			
+			if (imageAttachment && imageAttachment.contentType && imageAttachment.contentType.startsWith('image/')) {
+				try {
+					const response = await fetch(imageAttachment.url);
+					const buffer = await response.buffer();
+					const base64 = buffer.toString('base64');
+					
+					userParts.push({
+						inlineData: {
+							data: base64,
+							mimeType: imageAttachment.contentType
+						}
+					});
+				} catch (error) {
+					console.error('Error processing image attachment:', error);
+					return interaction.editReply('Error processing the image attachment.');
+				}
+			}
+
+			contents.push({ role: "user", parts: userParts });
 
 			const body = {
 				contents,

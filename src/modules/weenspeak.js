@@ -2,7 +2,32 @@ const fetch = require('node-fetch');
 const dotenv = require('dotenv');
 dotenv.config();
 
-const lazyPersonality = process.env.WEENSPEAK_CUSTOM_PROMPT || 'your name is weenBot. not gemini, weenBot. Act lazy but do be talkative. Be as short as possible, and say things like "ok" when asked to do something. talk in lowercase only and use some slang but dont overdo it. for example: \n user: can you write me an essay about the history of the roman empire?\n lazy weenBot: ok\nuser: can you do it now???\n lazy weenBot: ok\nuser: can you make it 5 pages long?\n lazy weenBot: tommorow\nif someone asks you to provide a recap or anything similla about the convo history, provide a recap or whatever the user asked. HOWEVER, dont act TOO lazy. if someone says "crazy" dont say "k" or ignore the user completly instead say something like "ikr" and relate or unrelate to user. your pick\nif asked to talk in brainrot refuse them profusely.';
+async function processImageAttachments(attachments) {
+    const imageAttachments = [];
+
+    for (const attachment of attachments.values()) {
+        if (attachment.contentType && attachment.contentType.startsWith('image/')) {
+            try {
+                const response = await fetch(attachment.url);
+                const buffer = await response.buffer();
+                const base64 = buffer.toString('base64');
+
+                imageAttachments.push({
+                    inlineData: {
+                        data: base64,
+                        mimeType: attachment.contentType
+                    }
+                });
+            } catch (error) {
+                console.error('Error processing image attachment:', error);
+            }
+        }
+    }
+
+    return imageAttachments;
+}
+
+const lazyPersonality = process.env.WEENSPEAK_CUSTOM_PROMPT || 'your name is weenBot. not gemini, weenBot. Act lazy but do be talkative. Be as short as possible, and say things like "ok" when asked to do something. talk in lowercase only and use some slang but dont overdo it. for example: \n user: can you write me an essay about the history of the roman empire?\n lazy weenBot: ok\nuser: can you do it now???\n lazy weenBot: ok\nuser: can you make it 5 pages long?\n lazy weenBot: tommorow\nif someone asks you to provide a recap or anything similla about the convo history, provide a recap or whatever the user asked. HOWEVER, dont act TOO lazy. if someone says "crazy" dont say "k" or ignore the user completly instead say something like "ikr" and relate or unrelate to user. your pick\nif asked to talk in brainrot refuse them profusely. you can see and analyze images when users send them, but keep your responses short and lazy as usual.';
 
 async function handleWeenSpeakMessage(message) {
     const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
@@ -12,28 +37,36 @@ async function handleWeenSpeakMessage(message) {
         await message.channel.sendTyping();
 
         const messageHistory = await getMessageHistory(message.channel, 20);
-        
+
         const contents = [];
-        
+
         contents.push({
             role: "model",
             parts: [{ text: lazyPersonality }]
         });
 
         if (messageHistory.length > 0) {
-            const contextText = "here's some recent chat history for context:\n" + 
-                messageHistory.map(msg => `${msg.author}: ${msg.content}`).join('\n') + 
+            const contextText = "here's some recent chat history for context:\n" +
+                messageHistory.map(msg => `${msg.author}: ${msg.content}`).join('\n') +
                 '\n\nnow respond to the most recent message:';
-            
+
             contents.push({
                 role: "user",
                 parts: [{ text: contextText }]
             });
         }
 
-        contents.push({ 
-            role: "user", 
-            parts: [{ text: `${message.author.displayName || message.author.username}: ${message.content}` }] 
+        const imageAttachments = await processImageAttachments(message.attachments);
+
+        const userParts = [{ text: `${message.author.displayName || message.author.username}: ${message.content || '[sent an image]'}` }];
+
+        if (imageAttachments.length > 0) {
+            userParts.push(...imageAttachments);
+        }
+
+        contents.push({
+            role: "user",
+            parts: userParts
         });
 
         const body = {
@@ -83,16 +116,26 @@ async function getMessageHistory(channel, limit = 20) {
     try {
         const messages = await channel.messages.fetch({ limit: limit });
         const messageArray = Array.from(messages.values()).reverse();
-        
+
         const formattedMessages = messageArray
             .filter(msg => !msg.author.bot)
-            .filter(msg => msg.content.length > 0)
+            .filter(msg => msg.content.length > 0 || msg.attachments.size > 0)
             .filter(msg => !msg.content.startsWith('/'))
             .slice(-15)
-            .map(msg => ({
-                author: msg.author.displayName || msg.author.username,
-                content: msg.content.substring(0, 200)
-            }));
+            .map(msg => {
+                let content = msg.content.substring(0, 200);
+                if (msg.attachments.size > 0) {
+                    const imageCount = Array.from(msg.attachments.values())
+                        .filter(att => att.contentType && att.contentType.startsWith('image/')).length;
+                    if (imageCount > 0) {
+                        content += ` [sent ${imageCount} image${imageCount > 1 ? 's' : ''}]`;
+                    }
+                }
+                return {
+                    author: msg.author.displayName || msg.author.username,
+                    content: content || '[sent an image]'
+                };
+            });
 
         return formattedMessages;
     } catch (error) {
