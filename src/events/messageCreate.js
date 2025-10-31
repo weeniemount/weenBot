@@ -11,7 +11,7 @@ module.exports = {
     name: Events.MessageCreate,
     async execute(message) {
         if (message.author.bot) return;
-        
+
         console.log(`Message received from ${message.author.tag}: "${message.content}"`);
 
         if (weenspeakChannels.size === 0) {
@@ -34,16 +34,11 @@ module.exports = {
 
         if (!message.guild) return;
 
-        const botMember = message.guild.members.me;
-        if (!botMember.permissions.has(PermissionFlagsBits.ManageMessages)) {
-            return;
-        }
-
         const serverId = message.guild.id;
 
         let filters;
         const cached = filterCache.get(serverId);
-        
+
         if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
             filters = cached.filters;
         } else {
@@ -60,12 +55,15 @@ module.exports = {
         }
 
         if (!filters || filters.length === 0) {
-            console.log(`No regex filters found for server ${serverId}`);
             return;
         }
-        
-        console.log(`Checking ${filters.length} regex filters for server 
-${serverId}`);
+
+        const botMember = message.guild.members.me;
+        if (!botMember.permissions.has(PermissionFlagsBits.ManageMessages)) {
+            return;
+        }
+
+        console.log(`Checking ${filters.length} regex filters for server ${serverId}`);
         const isAdmin = message.member.permissions.has(PermissionFlagsBits.Administrator);
 
         for (const filter of filters) {
@@ -75,7 +73,7 @@ ${serverId}`);
                 }
 
                 const regex = new RegExp(filter.pattern, 'gim');
-                
+
                 if (regex.test(message.content)) {
                     console.log(`Filter matched: "${filter.name}" triggered by ${message.author.tag} (admin: ${isAdmin}, affects_admins: ${filter.affects_admins})`);
 
@@ -92,7 +90,7 @@ ${serverId}`);
                                 await message.channel.send(
                                     `${message.author}, your message was removed for violating server rules: **${filter.name}**`
                                 ).then(msg => {
-                                    setTimeout(() => msg.delete().catch(() => {}), 5000);
+                                    setTimeout(() => msg.delete().catch(() => { }), 5000);
                                 });
                             } catch (err) {
                                 console.error('Failed to send warning:', err);
@@ -106,7 +104,7 @@ ${serverId}`);
                                     await message.channel.send(
                                         `${message.author} has been timed out for 5 minutes for violating: **${filter.name}**`
                                     ).then(msg => {
-                                        setTimeout(() => msg.delete().catch(() => {}), 5000);
+                                        setTimeout(() => msg.delete().catch(() => { }), 5000);
                                     });
                                 }
                             } catch (err) {
