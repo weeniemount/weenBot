@@ -156,7 +156,7 @@ async function handleAdd(interaction, serverId) {
         const filter = await addRegexFilter(serverId, pattern, name, action, affectsAdmins);
 
         const embed = new EmbedBuilder()
-            .setColor(0x57F287)
+            .setColor(0xb03000)
             .setTitle('✅ regex filter added')
             .addFields(
                 { name: 'id', value: `${filter.id}`, inline: true },
@@ -188,7 +188,7 @@ async function handleRemove(interaction, serverId) {
         }
 
         const embed = new EmbedBuilder()
-            .setColor(0xED4245)
+            .setColor(0xb03000)
             .setTitle('🗑️ regex filter removed')
             .setDescription(`filter id ${filterId} has been removed`)
             .setTimestamp();
@@ -240,7 +240,7 @@ async function handleUpdate(interaction, serverId) {
         }
 
         const embed = new EmbedBuilder()
-            .setColor(0x5865F2)
+            .setColor(0xb03000)
             .setTitle('✏️ regex filter updated')
             .addFields(
                 { name: 'id', value: `${filter.id}`, inline: true },
@@ -270,7 +270,7 @@ async function handleList(interaction, serverId) {
         }
 
         const embed = new EmbedBuilder()
-            .setColor(0x5865F2)
+            .setColor(0xb03000)
             .setTitle('📋 active regex filters')
             .setDescription(`total filters: ${filters.length}`)
             .setTimestamp();

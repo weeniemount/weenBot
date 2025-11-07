@@ -165,7 +165,7 @@ function createUnlockedEmbed(targetUser, unlocked) {
 
 function createLockedEmbed(targetUser, lockedAchievements, tracking) {
     const embed = new EmbedBuilder()
-        .setColor(0x808080)
+        .setColor(0xb03000)
         .setTitle(`${targetUser.username}'s achievements`)
         .setThumbnail(targetUser.displayAvatarURL())
         .setTimestamp();

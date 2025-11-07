@@ -334,7 +334,7 @@ async function fetchLeaderboards(interaction, scope, serverId) {
 
 function createLeaderboardEmbed(leaderboards, scope, type, interaction) {
     const embed = new EmbedBuilder()
-        .setColor(0x5865F2)
+        .setColor(0xb03000)
         .setTimestamp();
 
     if (scope === 'server' && interaction.guild) {

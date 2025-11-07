@@ -17,7 +17,7 @@ module.exports = {
         };
 
         const embed = new EmbedBuilder()
-            .setColor(0x5865F2)
+            .setColor(0xb03000)
             .setTitle('🔒 bot permissions status')
             .setDescription('heres what permissions the bot currently has and what theyre used for')
             .addFields(
