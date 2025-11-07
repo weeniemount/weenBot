@@ -111,7 +111,7 @@ async function handleSpeechBubble(interaction) {
             
             for (let i = 0; i < bubbleData.data.length; i += 4) {
                 const brightness = (bubbleData.data[i] + bubbleData.data[i + 1] + bubbleData.data[i + 2]) / 3;
-                const alpha = Math.pow(brightness / 255, 0.5) * 255;
+                const alpha = Math.pow(brightness / 255, 1) * 255;
                 bubbleData.data[i + 3] = alpha;
             }
             
@@ -145,7 +145,7 @@ async function handleSpeechBubble(interaction) {
             
             for (let i = 0; i < tintMask.data.length; i += 4) {
                 const brightness = (tintMask.data[i] + tintMask.data[i + 1] + tintMask.data[i + 2]) / 3;
-                const tintAmount = Math.pow(brightness / 255, 0.3);
+                const tintAmount = Math.pow(brightness / 255, 1);
                 
                 tintMask.data[i] = 255;
                 tintMask.data[i + 1] = 255;
