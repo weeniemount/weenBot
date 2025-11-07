@@ -15,9 +15,12 @@
     "@discordjs/rest": "^2.6.0",
     "@discordjs/util": "^1.1.1",
     "@supabase/supabase-js": "^2.57.4",
+    "canvas": "^2.11.2",
     "discord.js": "^14.22.1",
     "dotenv": "^17.2.2",
     "express": "^5.1.0",
-    "node-fetch": "^2.7.0"
+    "gifencoder": "^2.0.1",
+    "node-fetch": "^2.7.0",
+    "qrcode": "^1.5.3"
   }
 }

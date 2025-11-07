@@ -26,6 +26,11 @@ module.exports = {
             .setLabel(`dev commands`)
             .setStyle(ButtonStyle.Primary);
         
+        const adminstuff = new ButtonBuilder()
+            .setCustomId(`adminstuff`)
+            .setLabel(`admin stuff`)
+            .setStyle(ButtonStyle.Primary);
+        
         const backButton = new ButtonBuilder()
             .setCustomId('back')
             .setLabel('back')
@@ -73,7 +78,13 @@ module.exports = {
                     const helpinfoembed = new EmbedBuilder()
                         .setColor(0xb03000)
                         .setTitle(`useful category`)
-                        .addFields({ name: `useful`, value: '/achievements - view all your achievements\n/settings - customize your weenBot user settings\n/calculator - a calculator\n/stats - view your peak stats\n/gemini - ask gemini a question\n/help - the thing you are viewing right now\n/ping - check if weenBot is even responding\n/weenspeak - for server admins! set up/remove weenspeak for weenBot to yap in a channel\n/weenbotinfo - view some info about weenbot\n/leaderboard - weenBot global and server leaderboards!' })
+                        .addFields({ name: `useful`, value: '/achievements - view all your achievements\n/settings - customize your weenBot user settings\n/calculator - a calculator\n/stats - view your peak stats\n/gemini - ask gemini a question\n/help - the thing you are viewing right now\n/imagetools - image manipulation tools (speech bubble, gif converter, qr codes)\n/ping - check if weenBot is even responding\n/weenspeak - for server admins! set up/remove weenspeak for weenBot to yap in a channel\n/weenbotinfo - view some info about weenbot\n/leaderboard - weenBot global and server leaderboards!' })
+                    await confirmation.update({ embeds: [helpinfoembed], components: [new ActionRowBuilder().addComponents(backButton)] });
+                } else if (confirmation.customId === 'adminstuff') {
+                    const helpinfoembed = new EmbedBuilder()
+                        .setColor(0xb03000)
+                        .setTitle(`admin stuff category`)
+                        .addFields({ name: `admin stuff`, value: '/permissions - check what permissions weenBot has\n/regexfilter - basically discords automod regex filter thing but better ig' })
                     await confirmation.update({ embeds: [helpinfoembed], components: [new ActionRowBuilder().addComponents(backButton)] });
                 } else if (confirmation.customId === 'devcommands') {
                     const helpinfoembed = new EmbedBuilder()
