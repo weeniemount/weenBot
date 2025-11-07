@@ -105,19 +105,33 @@ async function handleSpeechBubble(interaction) {
 
             bubbleCtx.drawImage(speechBubble, 0, 0, bubbleWidth, bubbleHeight);
 
+            const bubbleData = bubbleCtx.getImageData(0, 0, bubbleWidth, bubbleHeight);
+            
+            for (let i = 0; i < bubbleData.data.length; i += 4) {
+                const brightness = (bubbleData.data[i] + bubbleData.data[i + 1] + bubbleData.data[i + 2]) / 3;
+                bubbleData.data[i + 3] = 255 - brightness;
+            }
+            
+            bubbleCtx.putImageData(bubbleData, 0, 0);
+            
             ctx.globalCompositeOperation = 'destination-out';
             ctx.drawImage(bubbleCanvas, 0, 0);
 
             ctx.globalCompositeOperation = 'source-over';
             ctx.globalAlpha = 0.8;
-            ctx.drawImage(bubbleCanvas, 0, 0);
+            ctx.drawImage(speechBubble, 0, 0, bubbleWidth, bubbleHeight);
             ctx.globalAlpha = 1.0;
         } else if (mode === 'solid') {
             ctx.drawImage(speechBubble, 0, 0, bubbleWidth, bubbleHeight);
         } else if (mode === 'tinted') {
             ctx.drawImage(speechBubble, 0, 0, bubbleWidth, bubbleHeight);
-            ctx.globalCompositeOperation = 'overlay';
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+            
+            ctx.globalCompositeOperation = 'lighten';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+            ctx.fillRect(0, 0, bubbleWidth, bubbleHeight);
+            
+            ctx.globalCompositeOperation = 'screen';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
             ctx.fillRect(0, 0, bubbleWidth, bubbleHeight);
             ctx.globalCompositeOperation = 'source-over';
         }
