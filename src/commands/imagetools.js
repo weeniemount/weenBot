@@ -109,7 +109,7 @@ async function handleSpeechBubble(interaction) {
             
             for (let i = 0; i < bubbleData.data.length; i += 4) {
                 const brightness = (bubbleData.data[i] + bubbleData.data[i + 1] + bubbleData.data[i + 2]) / 3;
-                bubbleData.data[i + 3] = 255 - brightness;
+                bubbleData.data[i + 3] = brightness;
             }
             
             bubbleCtx.putImageData(bubbleData, 0, 0);
@@ -118,22 +118,35 @@ async function handleSpeechBubble(interaction) {
             ctx.drawImage(bubbleCanvas, 0, 0);
 
             ctx.globalCompositeOperation = 'source-over';
-            ctx.globalAlpha = 0.8;
-            ctx.drawImage(speechBubble, 0, 0, bubbleWidth, bubbleHeight);
-            ctx.globalAlpha = 1.0;
         } else if (mode === 'solid') {
             ctx.drawImage(speechBubble, 0, 0, bubbleWidth, bubbleHeight);
         } else if (mode === 'tinted') {
+            const imageData = ctx.getImageData(0, 0, bubbleWidth, bubbleHeight);
             ctx.drawImage(speechBubble, 0, 0, bubbleWidth, bubbleHeight);
             
-            ctx.globalCompositeOperation = 'lighten';
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-            ctx.fillRect(0, 0, bubbleWidth, bubbleHeight);
+            const tintData = ctx.getImageData(0, 0, bubbleWidth, bubbleHeight);
             
-            ctx.globalCompositeOperation = 'screen';
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-            ctx.fillRect(0, 0, bubbleWidth, bubbleHeight);
-            ctx.globalCompositeOperation = 'source-over';
+            ctx.putImageData(imageData, 0, 0);
+            
+            const tintCanvas = createCanvas(bubbleWidth, bubbleHeight);
+            const tintCtx = tintCanvas.getContext('2d');
+            tintCtx.drawImage(speechBubble, 0, 0, bubbleWidth, bubbleHeight);
+            
+            const tintMask = tintCtx.getImageData(0, 0, bubbleWidth, bubbleHeight);
+            
+            for (let i = 0; i < tintMask.data.length; i += 4) {
+                const brightness = (tintMask.data[i] + tintMask.data[i + 1] + tintMask.data[i + 2]) / 3;
+                const tintAmount = brightness / 255;
+                
+                tintMask.data[i] = 255;
+                tintMask.data[i + 1] = 255;
+                tintMask.data[i + 2] = 255;
+                tintMask.data[i + 3] = tintAmount * 200;
+            }
+            
+            tintCtx.putImageData(tintMask, 0, 0);
+            
+            ctx.drawImage(tintCanvas, 0, 0);
         }
 
         let buffer;
