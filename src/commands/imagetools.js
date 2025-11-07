@@ -100,53 +100,69 @@ async function handleSpeechBubble(interaction) {
         const bubbleHeight = Math.floor(userImage.height * 0.3);
 
         if (mode === 'transparent') {
-            const bubbleCanvas = createCanvas(bubbleWidth, bubbleHeight);
-            const bubbleCtx = bubbleCanvas.getContext('2d');
-
-            bubbleCtx.drawImage(speechBubble, 0, 0, bubbleWidth, bubbleHeight);
-
-            const bubbleData = bubbleCtx.getImageData(0, 0, bubbleWidth, bubbleHeight);
+            const scale = 4;
+            const bubbleCanvas = createCanvas(bubbleWidth * scale, bubbleHeight * scale);
+            const bubbleCtx = bubbleCanvas.getContext('2d', { antialias: 'subpixel' });
+            bubbleCtx.imageSmoothingEnabled = true;
+            bubbleCtx.imageSmoothingQuality = 'high';
+            
+            bubbleCtx.drawImage(speechBubble, 0, 0, bubbleWidth * scale, bubbleHeight * scale);
+            const bubbleData = bubbleCtx.getImageData(0, 0, bubbleWidth * scale, bubbleHeight * scale);
             
             for (let i = 0; i < bubbleData.data.length; i += 4) {
                 const brightness = (bubbleData.data[i] + bubbleData.data[i + 1] + bubbleData.data[i + 2]) / 3;
-                bubbleData.data[i + 3] = brightness;
+                const alpha = Math.pow(brightness / 255, 0.5) * 255;
+                bubbleData.data[i + 3] = alpha;
             }
             
             bubbleCtx.putImageData(bubbleData, 0, 0);
             
+            const tempCanvas = createCanvas(bubbleWidth, bubbleHeight);
+            const tempCtx = tempCanvas.getContext('2d', { antialias: 'subpixel' });
+            tempCtx.imageSmoothingEnabled = true;
+            tempCtx.imageSmoothingQuality = 'high';
+            tempCtx.drawImage(bubbleCanvas, 0, 0, bubbleWidth, bubbleHeight);
+            
             ctx.globalCompositeOperation = 'destination-out';
-            ctx.drawImage(bubbleCanvas, 0, 0);
-
+            ctx.drawImage(tempCanvas, 0, 0);
+            
             ctx.globalCompositeOperation = 'source-over';
+            
         } else if (mode === 'solid') {
             ctx.drawImage(speechBubble, 0, 0, bubbleWidth, bubbleHeight);
+            
         } else if (mode === 'tinted') {
+            const scale = 4;
             const imageData = ctx.getImageData(0, 0, bubbleWidth, bubbleHeight);
-            ctx.drawImage(speechBubble, 0, 0, bubbleWidth, bubbleHeight);
             
-            const tintData = ctx.getImageData(0, 0, bubbleWidth, bubbleHeight);
+            const tintCanvas = createCanvas(bubbleWidth * scale, bubbleHeight * scale);
+            const tintCtx = tintCanvas.getContext('2d', { antialias: 'subpixel' });
+            tintCtx.imageSmoothingEnabled = true;
+            tintCtx.imageSmoothingQuality = 'high';
+            tintCtx.drawImage(speechBubble, 0, 0, bubbleWidth * scale, bubbleHeight * scale);
             
-            ctx.putImageData(imageData, 0, 0);
-            
-            const tintCanvas = createCanvas(bubbleWidth, bubbleHeight);
-            const tintCtx = tintCanvas.getContext('2d');
-            tintCtx.drawImage(speechBubble, 0, 0, bubbleWidth, bubbleHeight);
-            
-            const tintMask = tintCtx.getImageData(0, 0, bubbleWidth, bubbleHeight);
+            const tintMask = tintCtx.getImageData(0, 0, bubbleWidth * scale, bubbleHeight * scale);
             
             for (let i = 0; i < tintMask.data.length; i += 4) {
                 const brightness = (tintMask.data[i] + tintMask.data[i + 1] + tintMask.data[i + 2]) / 3;
-                const tintAmount = brightness / 255;
+                const tintAmount = Math.pow(brightness / 255, 0.3);
                 
                 tintMask.data[i] = 255;
                 tintMask.data[i + 1] = 255;
                 tintMask.data[i + 2] = 255;
-                tintMask.data[i + 3] = tintAmount * 200;
+                tintMask.data[i + 3] = tintAmount * 255;
             }
             
             tintCtx.putImageData(tintMask, 0, 0);
             
-            ctx.drawImage(tintCanvas, 0, 0);
+            const finalTintCanvas = createCanvas(bubbleWidth, bubbleHeight);
+            const finalTintCtx = finalTintCanvas.getContext('2d', { antialias: 'subpixel' });
+            finalTintCtx.imageSmoothingEnabled = true;
+            finalTintCtx.imageSmoothingQuality = 'high';
+            finalTintCtx.drawImage(tintCanvas, 0, 0, bubbleWidth, bubbleHeight);
+            
+            ctx.putImageData(imageData, 0, 0);
+            ctx.drawImage(finalTintCanvas, 0, 0);
         }
 
         let buffer;
