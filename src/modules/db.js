@@ -958,7 +958,7 @@ async function uploadFileToDisk(userId, diskName, filePath, fileName, fileData, 
                 disk_id: disk.id,
                 file_path: filePath,
                 file_name: fileName,
-                file_data: fileData.toString('base64'),
+                file_data: Array.from(fileData),
                 file_size: fileSize,
                 mime_type: mimeType,
                 updated_at: new Date().toISOString()
