@@ -90,7 +90,7 @@ CREATE TABLE disk_files (
     file_path TEXT NOT NULL,
     file_name TEXT NOT NULL,
     file_data TEXT NOT NULL,
-    file_size INTEGER NOT NULL CHECK (file_size <= 10485760), -- 10MB limit
+    file_size INTEGER NOT NULL CHECK (file_size <= 20971520), -- 20MB limit
     mime_type TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -929,8 +929,8 @@ async function uploadFileToDisk(userId, diskName, filePath, fileName, fileData, 
     try {
         const fileSize = fileData.length;
 
-        if (fileSize > 10485760) {
-            throw new Error('File size exceeds 10MB limit');
+        if (fileSize > 20971520) {
+            throw new Error('File size exceeds 20MB limit');
         }
 
         const disk = await getDisk(userId, diskName);

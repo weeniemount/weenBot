@@ -365,9 +365,9 @@ module.exports = {
                         }
                     }
 
-                    if (attachment.size > 10485760) {
+                    if (attachment.size > 20971520) {
                         return interaction.reply({
-                            content: 'file size exceeds 10MB limit lol',
+                            content: 'file size exceeds 20MB limit lol',
                             ephemeral: true
                         });
                     }
