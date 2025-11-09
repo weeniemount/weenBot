@@ -233,8 +233,24 @@ module.exports = {
                     await interaction.deferReply();
 
                     try {
+                        const progressEmbed1 = new EmbedBuilder()
+                            .setColor(0xb03000)
+                            .setTitle('📤 uploading file')
+                            .setDescription(`downloading **${attachment.name}** from discord...`)
+                            .addFields({ name: 'progress', value: '🔄 downloading...', inline: true });
+                        
+                        await interaction.editReply({ embeds: [progressEmbed1] });
+
                         const response = await fetch(attachment.url);
                         const fileData = Buffer.from(await response.arrayBuffer());
+
+                        const progressEmbed2 = new EmbedBuilder()
+                            .setColor(0xb03000)
+                            .setTitle('📤 uploading file')
+                            .setDescription(`processing and uploading **${attachment.name}** to disk **${diskName}**...`)
+                            .addFields({ name: 'progress', value: '🔄 uploading to disk...', inline: true });
+                        
+                        await interaction.editReply({ embeds: [progressEmbed2] });
 
                         await uploadFileToDisk(userId, diskName, filePath, attachment.name, fileData, attachment.contentType);
 
@@ -265,6 +281,14 @@ module.exports = {
                     await interaction.deferReply();
 
                     try {
+                        const progressEmbed = new EmbedBuilder()
+                            .setColor(0xb03000)
+                            .setTitle('📥 downloading file')
+                            .setDescription(`retrieving **${filePath}** from disk **${diskName}**...`)
+                            .addFields({ name: 'progress', value: '🔄 retrieving from disk...', inline: true });
+                        
+                        await interaction.editReply({ embeds: [progressEmbed] });
+
                         const file = await getFileFromDisk(userId, diskName, filePath);
                         
                         if (!file) {
