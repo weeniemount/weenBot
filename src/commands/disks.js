@@ -422,17 +422,34 @@ module.exports = {
                         .setDescription(`found ${files.length} file(s)`);
 
                     let fileList = '';
-                    for (const file of files.slice(0, 20)) {
+                    const dirs = new Set();
+                    const regularFiles = [];
+
+                    for (const file of files) {
+                        const relativePath = file.file_path.substring(directory.length);
+                        if (relativePath.includes('/')) {
+                            const dirName = relativePath.split('/')[0];
+                            dirs.add(dirName);
+                        } else if (file.file_name !== '.directory') {
+                            regularFiles.push(file);
+                        }
+                    }
+
+                    for (const dir of Array.from(dirs).sort()) {
+                        fileList += `📁 \`${dir}/\`\n`;
+                    }
+
+                    for (const file of regularFiles.slice(0, 15)) {
                         const size = formatBytes(file.file_size);
                         const date = new Date(file.created_at).toLocaleDateString();
-                        fileList += `📄 \`${file.file_path}\` (${size}) - ${date}\n`;
+                        fileList += `📄 \`${file.file_name}\` (${size}) - ${date}\n`;
                     }
 
-                    if (files.length > 20) {
-                        fileList += `\n... and ${files.length - 20} more files`;
+                    if (regularFiles.length > 15) {
+                        fileList += `\n... and ${regularFiles.length - 15} more files`;
                     }
 
-                    embed.addFields({ name: 'files', value: fileList || 'no files found' });
+                    embed.addFields({ name: 'contents', value: fileList || 'no files found' });
 
                     return interaction.reply({ embeds: [embed] });
                 }
