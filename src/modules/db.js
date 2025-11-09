@@ -1084,6 +1084,45 @@ async function deleteFileFromDisk(userId, diskName, filePath) {
     }
 }
 
+async function createDirectory(userId, diskName, dirPath) {
+    if (!supabase) {
+        throw new Error('Supabase not initialized');
+    }
+
+    try {
+        const disk = await getDisk(userId, diskName);
+        if (!disk) {
+            throw new Error('Disk not found');
+        }
+
+        if (!dirPath.endsWith('/')) {
+            dirPath += '/';
+        }
+
+        const { data, error } = await supabase
+            .from('disk_files')
+            .upsert([{
+                disk_id: disk.id,
+                file_path: dirPath + '.directory',
+                file_name: '.directory',
+                file_data: Buffer.from('directory placeholder').toString('base64'),
+                file_size: 0,
+                mime_type: 'directory',
+                updated_at: new Date().toISOString()
+            }], {
+                onConflict: 'disk_id,file_path'
+            })
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data;
+    } catch (err) {
+        console.error('Error creating directory:', err);
+        throw err;
+    }
+}
+
 
 module.exports = {
     db: supabase,
@@ -1127,5 +1166,6 @@ module.exports = {
     uploadFileToDisk,
     getFileFromDisk,
     listDiskFiles,
-    deleteFileFromDisk
+    deleteFileFromDisk,
+    createDirectory
 };

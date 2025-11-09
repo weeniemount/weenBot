@@ -7,7 +7,8 @@ const {
     uploadFileToDisk,
     getFileFromDisk,
     listDiskFiles,
-    deleteFileFromDisk
+    deleteFileFromDisk,
+    createDirectory
 } = require('../modules/db.js');
 
 function formatBytes(bytes) {
@@ -106,7 +107,31 @@ module.exports = {
                 .addStringOption(option =>
                     option.setName('path')
                         .setDescription('path to the file to remove')
-                        .setRequired(true))),
+                        .setRequired(true)))
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('mkdir')
+                .setDescription('create a directory on a disk')
+                .addStringOption(option =>
+                    option.setName('disk')
+                        .setDescription('name of the disk')
+                        .setRequired(true))
+                .addStringOption(option =>
+                    option.setName('path')
+                        .setDescription('directory path to create (e.g., /folder/subfolder)')
+                        .setRequired(true)))
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('cd')
+                .setDescription('change directory and list contents')
+                .addStringOption(option =>
+                    option.setName('disk')
+                        .setDescription('name of the disk')
+                        .setRequired(true))
+                .addStringOption(option =>
+                    option.setName('directory')
+                        .setDescription('directory to enter (default: /)')
+                        .setRequired(false))),
 
     async execute(interaction) {
         const subcommand = interaction.options.getSubcommand();
@@ -219,9 +244,20 @@ module.exports = {
                 case 'upload': {
                     const diskName = interaction.options.getString('disk');
                     const attachment = interaction.options.getAttachment('file');
-                    let filePath = interaction.options.getString('path') || `/${attachment.name}`;
+                    let filePath = interaction.options.getString('path');
                     
-                    filePath = formatPath(filePath);
+                    if (!filePath || filePath === '/') {
+                        filePath = `/${attachment.name}`;
+                    } else {
+                        filePath = formatPath(filePath);
+                        if (filePath.endsWith('/')) {
+                            filePath = filePath + attachment.name;
+                        }
+                        if (!filePath.includes('.') || filePath.lastIndexOf('/') > filePath.lastIndexOf('.')) {
+                            if (!filePath.endsWith('/')) filePath += '/';
+                            filePath += attachment.name;
+                        }
+                    }
 
                     if (attachment.size > 5242880) {
                         return interaction.reply({ 
@@ -382,6 +418,87 @@ module.exports = {
                         .setColor(0xb03000)
                         .setTitle('🗑️ file deleted')
                         .setDescription(`successfully deleted **${filePath}** from disk **${diskName}**`);
+
+                    return interaction.reply({ embeds: [embed] });
+                }
+
+                case 'mkdir': {
+                    const diskName = interaction.options.getString('disk');
+                    let dirPath = interaction.options.getString('path');
+                    
+                    dirPath = formatPath(dirPath);
+
+                    try {
+                        await createDirectory(userId, diskName, dirPath);
+
+                        const embed = new EmbedBuilder()
+                            .setColor(0xb03000)
+                            .setTitle('📁 directory created')
+                            .setDescription(`successfully created directory **${dirPath}** on disk **${diskName}**`);
+
+                        return interaction.reply({ embeds: [embed] });
+                    } catch (error) {
+                        return interaction.reply({ 
+                            content: `❌ ${error.message}`, 
+                            ephemeral: true 
+                        });
+                    }
+                }
+
+                case 'cd': {
+                    const diskName = interaction.options.getString('disk');
+                    let directory = interaction.options.getString('directory') || '/';
+                    
+                    directory = formatPath(directory);
+                    if (!directory.endsWith('/')) directory += '/';
+
+                    const disk = await getDisk(userId, diskName);
+                    if (!disk) {
+                        return interaction.reply({ 
+                            content: `❌ disk **${diskName}** not found.`, 
+                            ephemeral: true 
+                        });
+                    }
+
+                    const files = await listDiskFiles(userId, diskName, directory);
+                    
+                    const embed = new EmbedBuilder()
+                        .setColor(0xb03000)
+                        .setTitle(`📁 ${diskName}:${directory}`)
+                        .setDescription(`current directory contents`);
+
+                    if (files.length === 0) {
+                        embed.addFields({ name: 'contents', value: 'empty directory' });
+                    } else {
+                        let fileList = '';
+                        const dirs = new Set();
+                        const regularFiles = [];
+
+                        for (const file of files) {
+                            const relativePath = file.file_path.substring(directory.length);
+                            if (relativePath.includes('/')) {
+                                const dirName = relativePath.split('/')[0];
+                                dirs.add(dirName);
+                            } else if (file.file_name !== '.directory') {
+                                regularFiles.push(file);
+                            }
+                        }
+
+                        for (const dir of Array.from(dirs).sort()) {
+                            fileList += `📁 \`${dir}/\`\n`;
+                        }
+
+                        for (const file of regularFiles.slice(0, 15)) {
+                            const size = formatBytes(file.file_size);
+                            fileList += `📄 \`${file.file_name}\` (${size})\n`;
+                        }
+
+                        if (regularFiles.length > 15) {
+                            fileList += `\n... and ${regularFiles.length - 15} more files`;
+                        }
+
+                        embed.addFields({ name: 'contents', value: fileList || 'empty directory' });
+                    }
 
                     return interaction.reply({ embeds: [embed] });
                 }
