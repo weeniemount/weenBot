@@ -76,6 +76,58 @@ module.exports = {
                         .setRequired(false)))
         .addSubcommand(subcommand =>
             subcommand
+                .setName('bulk')
+                .setDescription('upload multiple files to a disk (up to 10 files)')
+                .addStringOption(option =>
+                    option.setName('disk')
+                        .setDescription('name of the disk')
+                        .setRequired(true))
+                .addAttachmentOption(option =>
+                    option.setName('file1')
+                        .setDescription('first file to upload (max 5MB each)')
+                        .setRequired(true))
+                .addAttachmentOption(option =>
+                    option.setName('file2')
+                        .setDescription('second file to upload')
+                        .setRequired(false))
+                .addAttachmentOption(option =>
+                    option.setName('file3')
+                        .setDescription('third file to upload')
+                        .setRequired(false))
+                .addAttachmentOption(option =>
+                    option.setName('file4')
+                        .setDescription('fourth file to upload')
+                        .setRequired(false))
+                .addAttachmentOption(option =>
+                    option.setName('file5')
+                        .setDescription('fifth file to upload')
+                        .setRequired(false))
+                .addAttachmentOption(option =>
+                    option.setName('file6')
+                        .setDescription('sixth file to upload')
+                        .setRequired(false))
+                .addAttachmentOption(option =>
+                    option.setName('file7')
+                        .setDescription('seventh file to upload')
+                        .setRequired(false))
+                .addAttachmentOption(option =>
+                    option.setName('file8')
+                        .setDescription('eighth file to upload')
+                        .setRequired(false))
+                .addAttachmentOption(option =>
+                    option.setName('file9')
+                        .setDescription('ninth file to upload')
+                        .setRequired(false))
+                .addAttachmentOption(option =>
+                    option.setName('file10')
+                        .setDescription('tenth file to upload')
+                        .setRequired(false))
+                .addStringOption(option =>
+                    option.setName('directory')
+                        .setDescription('directory to upload files to (default: /)')
+                        .setRequired(false)))
+        .addSubcommand(subcommand =>
+            subcommand
                 .setName('download')
                 .setDescription('download a file from a disk')
                 .addStringOption(option =>
@@ -342,6 +394,127 @@ module.exports = {
                     } catch (error) {
                         return interaction.editReply({
                             content: `upload failed: ${error.message}`
+                        });
+                    }
+                }
+
+                case 'bulk': {
+                    const diskName = interaction.options.getString('disk');
+                    let directory = interaction.options.getString('directory') || '/';
+
+                    directory = formatPath(directory);
+                    if (!directory.endsWith('/')) directory += '/';
+
+                    const attachments = [];
+                    for (let i = 1; i <= 10; i++) {
+                        const attachment = interaction.options.getAttachment(`file${i}`);
+                        if (attachment) {
+                            if (attachment.size > 5242880) {
+                                return interaction.reply({
+                                    content: `file **${attachment.name}** exceeds 5MB limit`,
+                                    ephemeral: true
+                                });
+                            }
+                            attachments.push(attachment);
+                        }
+                    }
+
+                    if (attachments.length === 0) {
+                        return interaction.reply({
+                            content: 'no files provided for bulk upload',
+                            ephemeral: true
+                        });
+                    }
+
+                    await interaction.deferReply();
+
+                    const results = {
+                        successful: [],
+                        failed: []
+                    };
+
+                    let totalSize = 0;
+
+                    try {
+                        for (let i = 0; i < attachments.length; i++) {
+                            const attachment = attachments[i];
+                            const filePath = directory + attachment.name;
+
+                            try {
+                                const progressEmbed = new EmbedBuilder()
+                                    .setColor(0xb03000)
+                                    .setTitle('📤 bulk upload in progress')
+                                    .setDescription(`uploading file ${i + 1}/${attachments.length}: **${attachment.name}**`)
+                                    .addFields(
+                                        { name: 'progress', value: `🔄 ${i}/${attachments.length} completed`, inline: true },
+                                        { name: 'current', value: `downloading **${attachment.name}**...`, inline: true }
+                                    );
+
+                                await interaction.editReply({ embeds: [progressEmbed] });
+
+                                const response = await fetch(attachment.url);
+                                const fileData = Buffer.from(await response.arrayBuffer());
+
+                                progressEmbed.setFields(
+                                    { name: 'progress', value: `🔄 ${i}/${attachments.length} completed`, inline: true },
+                                    { name: 'current', value: `uploading **${attachment.name}** to disk...`, inline: true }
+                                );
+                                await interaction.editReply({ embeds: [progressEmbed] });
+
+                                await uploadFileToDisk(userId, diskName, filePath, attachment.name, fileData, attachment.contentType);
+
+                                results.successful.push({
+                                    name: attachment.name,
+                                    path: filePath,
+                                    size: attachment.size
+                                });
+                                totalSize += attachment.size;
+
+                            } catch (error) {
+                                results.failed.push({
+                                    name: attachment.name,
+                                    error: error.message
+                                });
+                            }
+                        }
+
+                        const embed = new EmbedBuilder()
+                            .setColor(results.failed.length === 0 ? 0x00ff00 : 0xffaa00)
+                            .setTitle('📤 bulk upload completed')
+                            .setDescription(`uploaded ${results.successful.length}/${attachments.length} files to disk **${diskName}**`);
+
+                        if (results.successful.length > 0) {
+                            let successList = '';
+                            for (const file of results.successful.slice(0, 10)) {
+                                successList += `✅ \`${file.name}\` (${formatBytes(file.size)})\n`;
+                            }
+                            if (results.successful.length > 10) {
+                                successList += `... and ${results.successful.length - 10} more files`;
+                            }
+                            embed.addFields({ name: 'successful uploads', value: successList });
+                        }
+
+                        if (results.failed.length > 0) {
+                            let failList = '';
+                            for (const file of results.failed.slice(0, 5)) {
+                                failList += `❌ \`${file.name}\`: ${file.error}\n`;
+                            }
+                            if (results.failed.length > 5) {
+                                failList += `... and ${results.failed.length - 5} more failures`;
+                            }
+                            embed.addFields({ name: 'failed uploads', value: failList });
+                        }
+
+                        embed.addFields(
+                            { name: 'total size uploaded', value: formatBytes(totalSize), inline: true },
+                            { name: 'directory', value: directory, inline: true }
+                        );
+
+                        return interaction.editReply({ embeds: [embed] });
+
+                    } catch (error) {
+                        return interaction.editReply({
+                            content: `bulk upload failed: ${error.message}`
                         });
                     }
                 }
