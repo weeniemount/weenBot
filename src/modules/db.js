@@ -74,6 +74,33 @@ CREATE INDEX idx_regex_filter_logs_server ON regex_filter_logs(server_id);
 CREATE INDEX idx_regex_filter_logs_user ON regex_filter_logs(user_id);
 CREATE INDEX idx_regex_filter_logs_created ON regex_filter_logs(created_at);
 
+CREATE TABLE virtual_disks (
+    id SERIAL PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    disk_name TEXT NOT NULL,
+    size_mb INTEGER DEFAULT 0 CHECK (size_mb <= 100),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(user_id, disk_name)
+);
+
+CREATE TABLE disk_files (
+    id SERIAL PRIMARY KEY,
+    disk_id INTEGER REFERENCES virtual_disks(id) ON DELETE CASCADE,
+    file_path TEXT NOT NULL,
+    file_name TEXT NOT NULL,
+    file_data BYTEA NOT NULL,
+    file_size INTEGER NOT NULL CHECK (file_size <= 5242880), -- 5MB limit
+    mime_type TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(disk_id, file_path)
+);
+
+CREATE INDEX idx_virtual_disks_user ON virtual_disks(user_id);
+CREATE INDEX idx_disk_files_disk ON disk_files(disk_id);
+CREATE INDEX idx_disk_files_path ON disk_files(disk_id, file_path);
+
 okay thank you for coming to my WEEN talk
 */
 
@@ -787,6 +814,276 @@ async function getAllRegexFilters() {
     }
 }
 
+async function createVirtualDisk(userId, diskName) {
+    if (!supabase) {
+        throw new Error('Supabase not initialized');
+    }
+
+    try {
+        const { data: existingDisks, error: countError } = await supabase
+            .from('virtual_disks')
+            .select('id')
+            .eq('user_id', userId);
+
+        if (countError) throw countError;
+
+        if (existingDisks && existingDisks.length >= 5) {
+            throw new Error('Maximum of 5 disks allowed per user');
+        }
+
+        const { data, error } = await supabase
+            .from('virtual_disks')
+            .insert([{
+                user_id: userId,
+                disk_name: diskName,
+                size_mb: 0
+            }])
+            .select()
+            .single();
+
+        if (error) {
+            if (error.code === '23505') {
+                throw new Error('Disk with that name already exists');
+            }
+            throw error;
+        }
+
+        return data;
+    } catch (err) {
+        console.error('Error creating virtual disk:', err);
+        throw err;
+    }
+}
+
+async function getUserDisks(userId) {
+    if (!supabase) {
+        throw new Error('Supabase not initialized');
+    }
+
+    try {
+        const { data, error } = await supabase
+            .from('virtual_disks')
+            .select('*')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: true });
+
+        if (error) throw error;
+        return data || [];
+    } catch (err) {
+        console.error('Error getting user disks:', err);
+        return [];
+    }
+}
+
+async function deleteDisk(userId, diskName) {
+    if (!supabase) {
+        throw new Error('Supabase not initialized');
+    }
+
+    try {
+        const { data, error } = await supabase
+            .from('virtual_disks')
+            .delete()
+            .eq('user_id', userId)
+            .eq('disk_name', diskName)
+            .select();
+
+        if (error) throw error;
+        return data && data.length > 0;
+    } catch (err) {
+        console.error('Error deleting disk:', err);
+        throw err;
+    }
+}
+
+async function getDisk(userId, diskName) {
+    if (!supabase) {
+        throw new Error('Supabase not initialized');
+    }
+
+    try {
+        const { data, error } = await supabase
+            .from('virtual_disks')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('disk_name', diskName)
+            .single();
+
+        if (error && error.code === 'PGRST116') {
+            return null;
+        }
+
+        if (error) throw error;
+        return data;
+    } catch (err) {
+        console.error('Error getting disk:', err);
+        return null;
+    }
+}
+
+async function uploadFileToDisk(userId, diskName, filePath, fileName, fileData, mimeType) {
+    if (!supabase) {
+        throw new Error('Supabase not initialized');
+    }
+
+    try {
+        const fileSize = fileData.length;
+        
+        if (fileSize > 5242880) {
+            throw new Error('File size exceeds 5MB limit');
+        }
+
+        const disk = await getDisk(userId, diskName);
+        if (!disk) {
+            throw new Error('Disk not found');
+        }
+
+        const { data: existingFiles, error: filesError } = await supabase
+            .from('disk_files')
+            .select('file_size')
+            .eq('disk_id', disk.id);
+
+        if (filesError) throw filesError;
+
+        const currentSize = existingFiles ? existingFiles.reduce((sum, file) => sum + file.file_size, 0) : 0;
+        const newTotalSize = currentSize + fileSize;
+
+        if (newTotalSize > 104857600) {
+            throw new Error('Adding this file would exceed 100MB disk limit');
+        }
+
+        const { data, error } = await supabase
+            .from('disk_files')
+            .upsert([{
+                disk_id: disk.id,
+                file_path: filePath,
+                file_name: fileName,
+                file_data: fileData,
+                file_size: fileSize,
+                mime_type: mimeType,
+                updated_at: new Date().toISOString()
+            }], {
+                onConflict: 'disk_id,file_path'
+            })
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        await supabase
+            .from('virtual_disks')
+            .update({
+                size_mb: Math.ceil(newTotalSize / 1048576),
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', disk.id);
+
+        return data;
+    } catch (err) {
+        console.error('Error uploading file to disk:', err);
+        throw err;
+    }
+}
+
+async function getFileFromDisk(userId, diskName, filePath) {
+    if (!supabase) {
+        throw new Error('Supabase not initialized');
+    }
+
+    try {
+        const disk = await getDisk(userId, diskName);
+        if (!disk) {
+            throw new Error('Disk not found');
+        }
+
+        const { data, error } = await supabase
+            .from('disk_files')
+            .select('*')
+            .eq('disk_id', disk.id)
+            .eq('file_path', filePath)
+            .single();
+
+        if (error && error.code === 'PGRST116') {
+            return null;
+        }
+
+        if (error) throw error;
+        return data;
+    } catch (err) {
+        console.error('Error getting file from disk:', err);
+        return null;
+    }
+}
+
+async function listDiskFiles(userId, diskName, directory = '/') {
+    if (!supabase) {
+        throw new Error('Supabase not initialized');
+    }
+
+    try {
+        const disk = await getDisk(userId, diskName);
+        if (!disk) {
+            throw new Error('Disk not found');
+        }
+
+        const { data, error } = await supabase
+            .from('disk_files')
+            .select('file_path, file_name, file_size, mime_type, created_at')
+            .eq('disk_id', disk.id)
+            .like('file_path', `${directory}%`);
+
+        if (error) throw error;
+        return data || [];
+    } catch (err) {
+        console.error('Error listing disk files:', err);
+        return [];
+    }
+}
+
+async function deleteFileFromDisk(userId, diskName, filePath) {
+    if (!supabase) {
+        throw new Error('Supabase not initialized');
+    }
+
+    try {
+        const disk = await getDisk(userId, diskName);
+        if (!disk) {
+            throw new Error('Disk not found');
+        }
+
+        const { data, error } = await supabase
+            .from('disk_files')
+            .delete()
+            .eq('disk_id', disk.id)
+            .eq('file_path', filePath)
+            .select();
+
+        if (error) throw error;
+
+        const { data: remainingFiles, error: filesError } = await supabase
+            .from('disk_files')
+            .select('file_size')
+            .eq('disk_id', disk.id);
+
+        if (filesError) throw filesError;
+
+        const newSize = remainingFiles ? remainingFiles.reduce((sum, file) => sum + file.file_size, 0) : 0;
+
+        await supabase
+            .from('virtual_disks')
+            .update({
+                size_mb: Math.ceil(newSize / 1048576),
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', disk.id);
+
+        return data && data.length > 0;
+    } catch (err) {
+        console.error('Error deleting file from disk:', err);
+        throw err;
+    }
+}
+
 
 module.exports = {
     db: supabase,
@@ -821,5 +1118,14 @@ module.exports = {
     removeRegexFilter,
     updateRegexFilter,
     getServerRegexFilters,
-    getAllRegexFilters
+    getAllRegexFilters,
+
+    createVirtualDisk,
+    getUserDisks,
+    deleteDisk,
+    getDisk,
+    uploadFileToDisk,
+    getFileFromDisk,
+    listDiskFiles,
+    deleteFileFromDisk
 };
