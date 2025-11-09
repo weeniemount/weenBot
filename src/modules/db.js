@@ -1139,10 +1139,14 @@ async function moveFile(userId, diskName, sourcePath, destPath) {
             throw new Error('Source file not found');
         }
 
+        const lastSlashIndex = destPath.lastIndexOf('/');
+        const newFileName = destPath.substring(lastSlashIndex + 1);
+
         const { error: updateError } = await supabase
             .from('disk_files')
             .update({
                 file_path: destPath,
+                file_name: newFileName,
                 updated_at: new Date().toISOString()
             })
             .eq('disk_id', disk.id)
