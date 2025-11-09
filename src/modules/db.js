@@ -113,7 +113,7 @@ function initializeSupabase() {
         console.error('Missing SUPABASE_URL or SUPABASE_ANON_KEY in environment variables');
         return null;
     }
-    
+
     supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
     console.log('Supabase client created successfully');
     return supabase;
@@ -123,20 +123,20 @@ async function addWeenSpeakChannel(channelId) {
     if (!supabase) {
         throw new Error('Supabase not initialized');
     }
-    
+
     try {
         const { data, error } = await supabase
             .from('weenspeakchannelids')
             .insert([{ channel_id: channelId }])
             .select();
-        
+
         if (error) {
             if (error.code === '23505') { // Unique violation
                 throw new Error('Channel is already a weenspeak channel');
             }
             throw error;
         }
-        
+
         return data;
     } catch (err) {
         console.error('Error adding weenspeak channel:', err);
@@ -153,18 +153,18 @@ async function getWeenSpeakChannels() {
             return [];
         }
     }
-    
+
     try {
         console.log('Fetching weenspeak channels from database...');
         const { data, error } = await supabase
             .from('weenspeakchannelids')
             .select('channel_id');
-        
+
         if (error) {
             console.error('Error fetching weenspeak channels:', error);
             return [];
         }
-        
+
         console.log(`Found ${data.length} weenspeak channels`);
         return data.map(row => row.channel_id);
     } catch (err) {
@@ -177,18 +177,18 @@ async function removeWeenSpeakChannel(channelId) {
     if (!supabase) {
         throw new Error('Supabase not initialized');
     }
-    
+
     try {
         const { data, error } = await supabase
             .from('weenspeakchannelids')
             .delete()
             .eq('channel_id', channelId)
             .select();
-        
+
         if (error) {
             throw error;
         }
-        
+
         return data.length > 0;
     } catch (err) {
         console.error('Error removing weenspeak channel:', err);
@@ -217,7 +217,7 @@ async function getButtonCount(buttonType, referenceId) {
             throw new Error('Supabase not initialized');
         }
     }
-    
+
     try {
         const { data, error } = await supabase
             .from('buttons')
@@ -225,11 +225,11 @@ async function getButtonCount(buttonType, referenceId) {
             .eq('button_type', buttonType)
             .eq('reference_id', referenceId)
             .single();
-        
+
         if (error && error.code !== 'PGRST116') {
             throw error;
         }
-        
+
         return data ? data.count : 0;
     } catch (err) {
         console.error('Error getting button count:', err);
@@ -245,7 +245,7 @@ async function updateButtonCount(buttonType, referenceId) {
             throw new Error('Supabase not initialized');
         }
     }
-    
+
     try {
         const { data: existingData, error: fetchError } = await supabase
             .from('buttons')
@@ -253,19 +253,19 @@ async function updateButtonCount(buttonType, referenceId) {
             .eq('button_type', buttonType)
             .eq('reference_id', referenceId)
             .single();
-        
+
         let currentCount = 0;
         if (!fetchError && existingData) {
             currentCount = existingData.count;
         }
-        
+
         const newCount = currentCount + 1;
-        
+
         const { data, error } = await supabase
             .from('buttons')
-            .upsert([{ 
-                button_type: buttonType, 
-                reference_id: referenceId, 
+            .upsert([{
+                button_type: buttonType,
+                reference_id: referenceId,
                 count: newCount,
                 updated_at: new Date().toISOString()
             }], {
@@ -273,11 +273,11 @@ async function updateButtonCount(buttonType, referenceId) {
             })
             .select()
             .single();
-        
+
         if (error) {
             throw error;
         }
-        
+
         return newCount;
     } catch (err) {
         console.error('Error updating button count:', err);
@@ -293,24 +293,24 @@ async function resetButtonCount(buttonType, referenceId) {
             throw new Error('Supabase not initialized');
         }
     }
-    
+
     try {
         const { data, error } = await supabase
             .from('buttons')
-            .upsert([{ 
-                button_type: buttonType, 
-                reference_id: referenceId, 
+            .upsert([{
+                button_type: buttonType,
+                reference_id: referenceId,
                 count: 0,
                 updated_at: new Date().toISOString()
             }], {
                 onConflict: 'button_type,reference_id'
             })
             .select();
-        
+
         if (error) {
             throw error;
         }
-        
+
         return true;
     } catch (err) {
         console.error('Error resetting button count:', err);
@@ -338,16 +338,16 @@ async function getUserSettings(userId) {
             throw new Error('Supabase not initialized');
         }
     }
-    
+
     try {
         const { data: settingsData, error: settingsError } = await supabase
             .from('user_settings')
             .select('*')
             .eq('user_id', userId)
             .single();
-        
+
         const buttonCount = await getPersonalButtonCount(userId);
-        
+
         if (settingsError && settingsError.code === 'PGRST116') {
             return {
                 user_id: userId,
@@ -356,11 +356,11 @@ async function getUserSettings(userId) {
                 button_count: buttonCount
             };
         }
-        
+
         if (settingsError) {
             throw settingsError;
         }
-        
+
         return {
             ...settingsData,
             button_count: buttonCount
@@ -384,24 +384,24 @@ async function updateUserSettings(userId, settings) {
             throw new Error('Supabase not initialized');
         }
     }
-    
+
     try {
         const updateData = {
             user_id: userId,
             updated_at: new Date().toISOString(),
             ...settings
         };
-        
+
         const { data, error } = await supabase
             .from('user_settings')
             .upsert([updateData])
             .select()
             .single();
-        
+
         if (error) {
             throw error;
         }
-        
+
         return data;
     } catch (err) {
         console.error('Error updating user settings:', err);
@@ -623,7 +623,7 @@ async function getLeaderboardAchievements(limit = 10) {
             .select('user_id, achievements');
 
         if (error) throw error;
-        
+
         if (!data) return [];
 
         const sorted = data
@@ -676,7 +676,7 @@ async function getServerAchievements(memberIds, limit = 10) {
             .in('user_id', memberIds);
 
         if (error) throw error;
-        
+
         if (!data) return [];
 
         const sorted = data
@@ -928,7 +928,7 @@ async function uploadFileToDisk(userId, diskName, filePath, fileName, fileData, 
 
     try {
         const fileSize = fileData.length;
-        
+
         if (fileSize > 5242880) {
             throw new Error('File size exceeds 5MB limit');
         }
@@ -958,7 +958,7 @@ async function uploadFileToDisk(userId, diskName, filePath, fileName, fileData, 
                 disk_id: disk.id,
                 file_path: filePath,
                 file_name: fileName,
-                file_data: fileData,
+                file_data: fileData.toString('base64'),
                 file_size: fileSize,
                 mime_type: mimeType,
                 updated_at: new Date().toISOString()
@@ -1091,15 +1091,15 @@ module.exports = {
     getWeenSpeakChannels,
     removeWeenSpeakChannel,
     initializeDB,
-    
+
     getButtonCount,
     updateButtonCount,
     resetButtonCount,
-    
+
     getPersonalButtonCount,
     updatePersonalButtonCount,
     resetPersonalButtonCount,
-    
+
     getUserSettings,
     updateUserSettings,
     checkUserAllowsPings,

@@ -273,7 +273,8 @@ module.exports = {
                             });
                         }
 
-                        const attachment = new AttachmentBuilder(file.file_data, { name: file.file_name });
+                        const fileBuffer = Buffer.from(file.file_data, 'base64');
+                        const attachment = new AttachmentBuilder(fileBuffer, { name: file.file_name });
 
                         const embed = new EmbedBuilder()
                             .setColor(0xb03000)
