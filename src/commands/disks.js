@@ -204,6 +204,22 @@ module.exports = {
                         .setRequired(true)))
         .addSubcommand(subcommand =>
             subcommand
+                .setName('rename')
+                .setDescription('rename a file on a disk')
+                .addStringOption(option =>
+                    option.setName('disk')
+                        .setDescription('name of the disk')
+                        .setRequired(true))
+                .addStringOption(option =>
+                    option.setName('path')
+                        .setDescription('current file path')
+                        .setRequired(true))
+                .addStringOption(option =>
+                    option.setName('newname')
+                        .setDescription('new filename (just the name, not full path)')
+                        .setRequired(true)))
+        .addSubcommand(subcommand =>
+            subcommand
                 .setName('cp')
                 .setDescription('copy a file to another location or disk')
                 .addStringOption(option =>
@@ -746,6 +762,40 @@ module.exports = {
                             .setColor(0xb03000)
                             .setTitle('📁 file moved')
                             .setDescription(`successfully moved **${sourcePath}** to **${destPath}** on disk **${diskName}**`);
+
+                        return interaction.reply({ embeds: [embed] });
+                    } catch (error) {
+                        return interaction.reply({
+                            content: `❌ ${error.message}`,
+                            ephemeral: true
+                        });
+                    }
+                }
+
+                case 'rename': {
+                    const diskName = interaction.options.getString('disk');
+                    let filePath = interaction.options.getString('path');
+                    const newName = interaction.options.getString('newname');
+
+                    filePath = formatPath(filePath);
+
+                    const lastSlashIndex = filePath.lastIndexOf('/');
+                    const directory = filePath.substring(0, lastSlashIndex + 1);
+                    const currentName = filePath.substring(lastSlashIndex + 1);
+
+                    const newPath = directory + newName;
+
+                    try {
+                        await moveFile(userId, diskName, filePath, newPath);
+
+                        const embed = new EmbedBuilder()
+                            .setColor(0xb03000)
+                            .setTitle('✏️ file renamed')
+                            .setDescription(`successfully renamed **${currentName}** to **${newName}** on disk **${diskName}**`)
+                            .addFields(
+                                { name: 'old path', value: filePath, inline: true },
+                                { name: 'new path', value: newPath, inline: true }
+                            );
 
                         return interaction.reply({ embeds: [embed] });
                     } catch (error) {
