@@ -89,7 +89,7 @@ CREATE TABLE disk_files (
     disk_id INTEGER REFERENCES virtual_disks(id) ON DELETE CASCADE,
     file_path TEXT NOT NULL,
     file_name TEXT NOT NULL,
-    file_data BYTEA NOT NULL,
+    file_data JSONB NOT NULL,
     file_size INTEGER NOT NULL CHECK (file_size <= 5242880), -- 5MB limit
     mime_type TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

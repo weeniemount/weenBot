@@ -273,13 +273,7 @@ module.exports = {
                             });
                         }
 
-                        let fileBuffer;
-                        if (typeof file.file_data === 'string') {
-                            const byteArray = JSON.parse(file.file_data);
-                            fileBuffer = Buffer.from(byteArray);
-                        } else {
-                            fileBuffer = Buffer.from(file.file_data);
-                        }
+                        const fileBuffer = Buffer.from(file.file_data);
                         const attachment = new AttachmentBuilder(fileBuffer, { name: file.file_name });
 
                         const embed = new EmbedBuilder()
