@@ -273,7 +273,7 @@ module.exports = {
                             });
                         }
 
-                        const fileBuffer = Buffer.from(file.file_data);
+                        const fileBuffer = Buffer.from(file.file_data, 'base64');
                         const attachment = new AttachmentBuilder(fileBuffer, { name: file.file_name });
 
                         const embed = new EmbedBuilder()
