@@ -1,14 +1,16 @@
 const { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder } = require('discord.js');
-const { 
-    createVirtualDisk, 
-    getUserDisks, 
-    deleteDisk, 
+const {
+    createVirtualDisk,
+    getUserDisks,
+    deleteDisk,
     getDisk,
     uploadFileToDisk,
     getFileFromDisk,
     listDiskFiles,
     deleteFileFromDisk,
-    createDirectory
+    createDirectory,
+    moveFile,
+    copyFile
 } = require('../modules/db.js');
 
 function formatBytes(bytes) {
@@ -131,7 +133,43 @@ module.exports = {
                 .addStringOption(option =>
                     option.setName('directory')
                         .setDescription('directory to enter (default: /)')
-                        .setRequired(false))),
+                        .setRequired(false)))
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('mv')
+                .setDescription('move a file to a new location')
+                .addStringOption(option =>
+                    option.setName('disk')
+                        .setDescription('name of the disk')
+                        .setRequired(true))
+                .addStringOption(option =>
+                    option.setName('source')
+                        .setDescription('source file path')
+                        .setRequired(true))
+                .addStringOption(option =>
+                    option.setName('destination')
+                        .setDescription('destination file path')
+                        .setRequired(true)))
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('cp')
+                .setDescription('copy a file to another location or disk')
+                .addStringOption(option =>
+                    option.setName('source_disk')
+                        .setDescription('source disk name')
+                        .setRequired(true))
+                .addStringOption(option =>
+                    option.setName('source_path')
+                        .setDescription('source file path')
+                        .setRequired(true))
+                .addStringOption(option =>
+                    option.setName('dest_disk')
+                        .setDescription('destination disk name')
+                        .setRequired(true))
+                .addStringOption(option =>
+                    option.setName('dest_path')
+                        .setDescription('destination file path')
+                        .setRequired(true))),
 
     async execute(interaction) {
         const subcommand = interaction.options.getSubcommand();
@@ -141,16 +179,16 @@ module.exports = {
             switch (subcommand) {
                 case 'create': {
                     const diskName = interaction.options.getString('name');
-                    
+
                     if (!/^[a-zA-Z0-9_-]+$/.test(diskName)) {
-                        return interaction.reply({ 
-                            content: 'disk name can only contain letters, numbers, underscores, and hyphens you silly goose', 
-                            ephemeral: true 
+                        return interaction.reply({
+                            content: 'disk name can only contain letters, numbers, underscores, and hyphens you silly goose',
+                            ephemeral: true
                         });
                     }
 
                     const disk = await createVirtualDisk(userId, diskName);
-                    
+
                     const embed = new EmbedBuilder()
                         .setColor(0xb03000)
                         .setTitle('💾 disk created')
@@ -166,11 +204,11 @@ module.exports = {
 
                 case 'list': {
                     const disks = await getUserDisks(userId);
-                    
+
                     if (disks.length === 0) {
-                        return interaction.reply({ 
-                            content: 'you have no virtual disks. use `/disks create` to create one! where else are you gonna store the files smh', 
-                            ephemeral: true 
+                        return interaction.reply({
+                            content: 'you have no virtual disks. use `/disks create` to create one! where else are you gonna store the files smh',
+                            ephemeral: true
                         });
                     }
 
@@ -182,7 +220,7 @@ module.exports = {
                     for (const disk of disks) {
                         const sizePercent = Math.round((disk.size_mb / 100) * 100);
                         const progressBar = '█'.repeat(Math.floor(sizePercent / 10)) + '░'.repeat(10 - Math.floor(sizePercent / 10));
-                        
+
                         embed.addFields({
                             name: `📀 ${disk.disk_name}`,
                             value: `${progressBar} ${disk.size_mb}/100 MB (${sizePercent}%)\ncreated: <t:${Math.floor(new Date(disk.created_at).getTime() / 1000)}:R>`,
@@ -196,11 +234,11 @@ module.exports = {
                 case 'delete': {
                     const diskName = interaction.options.getString('name');
                     const deleted = await deleteDisk(userId, diskName);
-                    
+
                     if (!deleted) {
-                        return interaction.reply({ 
-                            content: `disk **${diskName}** not found.`, 
-                            ephemeral: true 
+                        return interaction.reply({
+                            content: `disk **${diskName}** not found.`,
+                            ephemeral: true
                         });
                     }
 
@@ -215,11 +253,11 @@ module.exports = {
                 case 'info': {
                     const diskName = interaction.options.getString('name');
                     const disk = await getDisk(userId, diskName);
-                    
+
                     if (!disk) {
-                        return interaction.reply({ 
-                            content: `disk **${diskName}** not found.`, 
-                            ephemeral: true 
+                        return interaction.reply({
+                            content: `disk **${diskName}** not found.`,
+                            ephemeral: true
                         });
                     }
 
@@ -245,7 +283,7 @@ module.exports = {
                     const diskName = interaction.options.getString('disk');
                     const attachment = interaction.options.getAttachment('file');
                     let filePath = interaction.options.getString('path');
-                    
+
                     if (!filePath || filePath === '/') {
                         filePath = `/${attachment.name}`;
                     } else {
@@ -260,9 +298,9 @@ module.exports = {
                     }
 
                     if (attachment.size > 5242880) {
-                        return interaction.reply({ 
-                            content: 'file size exceeds 5MB limit lol', 
-                            ephemeral: true 
+                        return interaction.reply({
+                            content: 'file size exceeds 5MB limit lol',
+                            ephemeral: true
                         });
                     }
 
@@ -274,7 +312,7 @@ module.exports = {
                             .setTitle('📤 uploading file')
                             .setDescription(`downloading **${attachment.name}** from discord...`)
                             .addFields({ name: 'progress', value: '🔄 downloading...', inline: true });
-                        
+
                         await interaction.editReply({ embeds: [progressEmbed1] });
 
                         const response = await fetch(attachment.url);
@@ -285,7 +323,7 @@ module.exports = {
                             .setTitle('📤 uploading file')
                             .setDescription(`processing and uploading **${attachment.name}** to disk **${diskName}**...`)
                             .addFields({ name: 'progress', value: '🔄 uploading to disk...', inline: true });
-                        
+
                         await interaction.editReply({ embeds: [progressEmbed2] });
 
                         await uploadFileToDisk(userId, diskName, filePath, attachment.name, fileData, attachment.contentType);
@@ -302,8 +340,8 @@ module.exports = {
 
                         return interaction.editReply({ embeds: [embed] });
                     } catch (error) {
-                        return interaction.editReply({ 
-                            content: `upload failed: ${error.message}` 
+                        return interaction.editReply({
+                            content: `upload failed: ${error.message}`
                         });
                     }
                 }
@@ -311,7 +349,7 @@ module.exports = {
                 case 'download': {
                     const diskName = interaction.options.getString('disk');
                     let filePath = interaction.options.getString('path');
-                    
+
                     filePath = formatPath(filePath);
 
                     await interaction.deferReply();
@@ -322,14 +360,14 @@ module.exports = {
                             .setTitle('📥 downloading file')
                             .setDescription(`retrieving **${filePath}** from disk **${diskName}**...`)
                             .addFields({ name: 'progress', value: '🔄 retrieving from disk...', inline: true });
-                        
+
                         await interaction.editReply({ embeds: [progressEmbed] });
 
                         const file = await getFileFromDisk(userId, diskName, filePath);
-                        
+
                         if (!file) {
-                            return interaction.editReply({ 
-                                content: `file **${filePath}** not found on disk **${diskName}**.` 
+                            return interaction.editReply({
+                                content: `file **${filePath}** not found on disk **${diskName}**.`
                             });
                         }
 
@@ -348,8 +386,8 @@ module.exports = {
 
                         return interaction.editReply({ embeds: [embed], files: [attachment] });
                     } catch (error) {
-                        return interaction.editReply({ 
-                            content: `download failed: ${error.message}` 
+                        return interaction.editReply({
+                            content: `download failed: ${error.message}`
                         });
                     }
                 }
@@ -357,24 +395,24 @@ module.exports = {
                 case 'ls': {
                     const diskName = interaction.options.getString('disk');
                     let directory = interaction.options.getString('directory') || '/';
-                    
+
                     directory = formatPath(directory);
                     if (!directory.endsWith('/')) directory += '/';
 
                     const disk = await getDisk(userId, diskName);
                     if (!disk) {
-                        return interaction.reply({ 
-                            content: `disk **${diskName}** not found.`, 
-                            ephemeral: true 
+                        return interaction.reply({
+                            content: `disk **${diskName}** not found.`,
+                            ephemeral: true
                         });
                     }
 
                     const files = await listDiskFiles(userId, diskName, directory);
-                    
+
                     if (files.length === 0) {
-                        return interaction.reply({ 
-                            content: `directory **${directory}** is empty or doesn't exist.`, 
-                            ephemeral: true 
+                        return interaction.reply({
+                            content: `directory **${directory}** is empty or doesn't exist.`,
+                            ephemeral: true
                         });
                     }
 
@@ -402,15 +440,15 @@ module.exports = {
                 case 'rm': {
                     const diskName = interaction.options.getString('disk');
                     let filePath = interaction.options.getString('path');
-                    
+
                     filePath = formatPath(filePath);
 
                     const deleted = await deleteFileFromDisk(userId, diskName, filePath);
-                    
+
                     if (!deleted) {
-                        return interaction.reply({ 
-                            content: `file **${filePath}** not found on disk **${diskName}**.`, 
-                            ephemeral: true 
+                        return interaction.reply({
+                            content: `file **${filePath}** not found on disk **${diskName}**.`,
+                            ephemeral: true
                         });
                     }
 
@@ -425,7 +463,7 @@ module.exports = {
                 case 'mkdir': {
                     const diskName = interaction.options.getString('disk');
                     let dirPath = interaction.options.getString('path');
-                    
+
                     dirPath = formatPath(dirPath);
 
                     try {
@@ -438,9 +476,9 @@ module.exports = {
 
                         return interaction.reply({ embeds: [embed] });
                     } catch (error) {
-                        return interaction.reply({ 
-                            content: `❌ ${error.message}`, 
-                            ephemeral: true 
+                        return interaction.reply({
+                            content: `❌ ${error.message}`,
+                            ephemeral: true
                         });
                     }
                 }
@@ -448,20 +486,20 @@ module.exports = {
                 case 'cd': {
                     const diskName = interaction.options.getString('disk');
                     let directory = interaction.options.getString('directory') || '/';
-                    
+
                     directory = formatPath(directory);
                     if (!directory.endsWith('/')) directory += '/';
 
                     const disk = await getDisk(userId, diskName);
                     if (!disk) {
-                        return interaction.reply({ 
-                            content: `❌ disk **${diskName}** not found.`, 
-                            ephemeral: true 
+                        return interaction.reply({
+                            content: `❌ disk **${diskName}** not found.`,
+                            ephemeral: true
                         });
                     }
 
                     const files = await listDiskFiles(userId, diskName, directory);
-                    
+
                     const embed = new EmbedBuilder()
                         .setColor(0xb03000)
                         .setTitle(`📁 ${diskName}:${directory}`)
@@ -503,18 +541,78 @@ module.exports = {
                     return interaction.reply({ embeds: [embed] });
                 }
 
+                case 'mv': {
+                    const diskName = interaction.options.getString('disk');
+                    let sourcePath = interaction.options.getString('source');
+                    let destPath = interaction.options.getString('destination');
+
+                    sourcePath = formatPath(sourcePath);
+                    destPath = formatPath(destPath);
+
+                    try {
+                        await moveFile(userId, diskName, sourcePath, destPath);
+
+                        const embed = new EmbedBuilder()
+                            .setColor(0xb03000)
+                            .setTitle('📁 file moved')
+                            .setDescription(`successfully moved **${sourcePath}** to **${destPath}** on disk **${diskName}**`);
+
+                        return interaction.reply({ embeds: [embed] });
+                    } catch (error) {
+                        return interaction.reply({
+                            content: `❌ ${error.message}`,
+                            ephemeral: true
+                        });
+                    }
+                }
+
+                case 'cp': {
+                    const sourceDisk = interaction.options.getString('source_disk');
+                    const destDisk = interaction.options.getString('dest_disk');
+                    let sourcePath = interaction.options.getString('source_path');
+                    let destPath = interaction.options.getString('dest_path');
+
+                    sourcePath = formatPath(sourcePath);
+                    destPath = formatPath(destPath);
+
+                    await interaction.deferReply();
+
+                    try {
+                        const progressEmbed = new EmbedBuilder()
+                            .setColor(0xb03000)
+                            .setTitle('📋 copying file')
+                            .setDescription(`copying **${sourcePath}** from **${sourceDisk}** to **${destPath}** on **${destDisk}**...`)
+                            .addFields({ name: 'progress', value: '🔄 copying...', inline: true });
+
+                        await interaction.editReply({ embeds: [progressEmbed] });
+
+                        await copyFile(userId, sourceDisk, destDisk, sourcePath, destPath);
+
+                        const embed = new EmbedBuilder()
+                            .setColor(0xb03000)
+                            .setTitle('📋 file copied')
+                            .setDescription(`successfully copied **${sourcePath}** from disk **${sourceDisk}** to **${destPath}** on disk **${destDisk}**`);
+
+                        return interaction.editReply({ embeds: [embed] });
+                    } catch (error) {
+                        return interaction.editReply({
+                            content: `❌ ${error.message}`
+                        });
+                    }
+                }
+
                 default:
-                    return interaction.reply({ 
-                        content: 'unknown subcommand.', 
-                        ephemeral: true 
+                    return interaction.reply({
+                        content: 'unknown subcommand.',
+                        ephemeral: true
                     });
             }
         } catch (error) {
             console.error('Disks command error:', error);
-            
+
             const errorMessage = error.message || 'an unexpected error occurred.';
             const content = `${errorMessage}`;
-            
+
             if (interaction.deferred) {
                 return interaction.editReply({ content });
             } else {

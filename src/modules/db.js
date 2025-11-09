@@ -1123,6 +1123,118 @@ async function createDirectory(userId, diskName, dirPath) {
     }
 }
 
+async function moveFile(userId, diskName, sourcePath, destPath) {
+    if (!supabase) {
+        throw new Error('Supabase not initialized');
+    }
+
+    try {
+        const disk = await getDisk(userId, diskName);
+        if (!disk) {
+            throw new Error('Disk not found');
+        }
+
+        const file = await getFileFromDisk(userId, diskName, sourcePath);
+        if (!file) {
+            throw new Error('Source file not found');
+        }
+
+        const { error: updateError } = await supabase
+            .from('disk_files')
+            .update({
+                file_path: destPath,
+                updated_at: new Date().toISOString()
+            })
+            .eq('disk_id', disk.id)
+            .eq('file_path', sourcePath);
+
+        if (updateError) throw updateError;
+        return true;
+    } catch (err) {
+        console.error('Error moving file:', err);
+        throw err;
+    }
+}
+
+async function copyFile(userId, sourceDisk, destDisk, sourcePath, destPath) {
+    if (!supabase) {
+        throw new Error('Supabase not initialized');
+    }
+
+    try {
+        const sourceDiskData = await getDisk(userId, sourceDisk);
+        const destDiskData = await getDisk(userId, destDisk);
+        
+        if (!sourceDiskData) {
+            throw new Error('Source disk not found');
+        }
+        if (!destDiskData) {
+            throw new Error('Destination disk not found');
+        }
+
+        const file = await getFileFromDisk(userId, sourceDisk, sourcePath);
+        if (!file) {
+            throw new Error('Source file not found');
+        }
+
+        if (sourceDisk !== destDisk) {
+            const { data: destFiles, error: destFilesError } = await supabase
+                .from('disk_files')
+                .select('file_size')
+                .eq('disk_id', destDiskData.id);
+
+            if (destFilesError) throw destFilesError;
+
+            const currentSize = destFiles ? destFiles.reduce((sum, f) => sum + f.file_size, 0) : 0;
+            const newTotalSize = currentSize + file.file_size;
+
+            if (newTotalSize > 104857600) {
+                throw new Error('Copying this file would exceed 100MB disk limit on destination disk');
+            }
+        }
+
+        const { data, error } = await supabase
+            .from('disk_files')
+            .insert([{
+                disk_id: destDiskData.id,
+                file_path: destPath,
+                file_name: file.file_name,
+                file_data: file.file_data,
+                file_size: file.file_size,
+                mime_type: file.mime_type,
+                updated_at: new Date().toISOString()
+            }])
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        if (sourceDisk !== destDisk) {
+            const { data: newDestFiles, error: newDestFilesError } = await supabase
+                .from('disk_files')
+                .select('file_size')
+                .eq('disk_id', destDiskData.id);
+
+            if (newDestFilesError) throw newDestFilesError;
+
+            const newSize = newDestFiles ? newDestFiles.reduce((sum, f) => sum + f.file_size, 0) : 0;
+
+            await supabase
+                .from('virtual_disks')
+                .update({
+                    size_mb: Math.ceil(newSize / 1048576),
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', destDiskData.id);
+        }
+
+        return data;
+    } catch (err) {
+        console.error('Error copying file:', err);
+        throw err;
+    }
+}
+
 
 module.exports = {
     db: supabase,
@@ -1167,5 +1279,7 @@ module.exports = {
     getFileFromDisk,
     listDiskFiles,
     deleteFileFromDisk,
-    createDirectory
+    createDirectory,
+    moveFile,
+    copyFile
 };
