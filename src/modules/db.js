@@ -1276,6 +1276,115 @@ async function updateDiskSettings(userId, currentDiskName, newSettings) {
     }
 }
 
+async function exportDisk(userId, diskName) {
+    if (!supabase) {
+        throw new Error('Supabase not initialized');
+    }
+
+    try {
+        const disk = await getDisk(userId, diskName);
+        if (!disk) {
+            throw new Error('Disk not found');
+        }
+
+        const files = await listDiskFiles(userId, diskName, '/');
+        
+        const exportData = {
+            weenFS: {
+                version: "1.0",
+                exported_at: new Date().toISOString(),
+                disk_info: {
+                    name: disk.disk_name,
+                    size_mb: disk.size_mb,
+                    created_at: disk.created_at
+                },
+                files: files.map(file => ({
+                    path: file.file_path,
+                    name: file.file_name,
+                    data: file.file_data,
+                    size: file.file_size,
+                    mime_type: file.mime_type,
+                    created_at: file.created_at
+                }))
+            }
+        };
+
+        return JSON.stringify(exportData, null, 2);
+    } catch (err) {
+        console.error('Error exporting disk:', err);
+        throw err;
+    }
+}
+
+async function importDisk(userId, diskName, exportData) {
+    if (!supabase) {
+        throw new Error('Supabase not initialized');
+    }
+
+    try {
+        const data = JSON.parse(exportData);
+        
+        if (!data.weenFS || !data.weenFS.version) {
+            throw new Error('Invalid weenFS export file');
+        }
+
+        const existingDisk = await getDisk(userId, diskName);
+        if (existingDisk) {
+            throw new Error('A disk with that name already exists');
+        }
+
+        const totalSize = data.weenFS.files.reduce((sum, file) => sum + (file.size || 0), 0);
+        const totalSizeMB = Math.ceil(totalSize / (1024 * 1024));
+
+        if (totalSizeMB > 100) {
+            throw new Error('Import would exceed 100MB disk limit');
+        }
+
+        await createVirtualDisk(userId, diskName);
+        const disk = await getDisk(userId, diskName);
+
+        for (const file of data.weenFS.files) {
+            if (file.mime_type === 'directory') {
+                continue;
+            }
+
+            const { error } = await supabase
+                .from('disk_files')
+                .insert([{
+                    disk_id: disk.id,
+                    file_path: file.path,
+                    file_name: file.name,
+                    file_data: file.data,
+                    file_size: file.size,
+                    mime_type: file.mime_type,
+                    created_at: file.created_at,
+                    updated_at: new Date().toISOString()
+                }]);
+
+            if (error) throw error;
+        }
+
+        const { error: updateError } = await supabase
+            .from('virtual_disks')
+            .update({ 
+                size_mb: totalSizeMB,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', disk.id);
+
+        if (updateError) throw updateError;
+
+        return {
+            fileCount: data.weenFS.files.filter(f => f.mime_type !== 'directory').length,
+            sizeMB: totalSizeMB,
+            originalName: data.weenFS.disk_info.name
+        };
+    } catch (err) {
+        console.error('Error importing disk:', err);
+        throw err;
+    }
+}
+
 module.exports = {
     db: supabase,
     addWeenSpeakChannel,
@@ -1322,5 +1431,7 @@ module.exports = {
     createDirectory,
     moveFile,
     copyFile,
-    updateDiskSettings
+    updateDiskSettings,
+    exportDisk,
+    importDisk
 };

@@ -11,7 +11,9 @@ const {
     createDirectory,
     moveFile,
     copyFile,
-    updateDiskSettings
+    updateDiskSettings,
+    exportDisk,
+    importDisk
 } = require('../modules/db.js');
 
 function formatBytes(bytes) {
@@ -29,7 +31,7 @@ function formatPath(path) {
 module.exports = {
     data: new SlashCommandBuilder({ integration_types: [0, 1], contexts: [0, 1, 2] })
         .setName('disks')
-        .setDescription('manage your virtual disks (max 5 disks, 100MB each, 5MB per file)')
+        .setDescription('manage your weenFS virtual disks (max 5 disks, 100MB each, 20MB per file)')
         .addSubcommand(subcommand =>
             subcommand
                 .setName('create')
@@ -250,7 +252,27 @@ module.exports = {
                 .addStringOption(option =>
                     option.setName('newname')
                         .setDescription('new name for the disk')
-                        .setRequired(false))),
+                        .setRequired(false)))
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('export')
+                .setDescription('export a weenFS disk as a downloadable file')
+                .addStringOption(option =>
+                    option.setName('disk')
+                        .setDescription('name of the disk to export')
+                        .setRequired(true)))
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('import')
+                .setDescription('import a weenFS disk from a file')
+                .addStringOption(option =>
+                    option.setName('name')
+                        .setDescription('name for the imported disk')
+                        .setRequired(true))
+                .addAttachment(option =>
+                    option.setName('file')
+                        .setDescription('weenFS disk file to import')
+                        .setRequired(true))),
 
     async execute(interaction) {
         const subcommand = interaction.options.getSubcommand();
@@ -870,9 +892,9 @@ module.exports = {
                         if (newName) {
                             const updateData = { disk_name: newName };
                             await updateDiskSettings(userId, diskName, updateData);
-                            
+
                             const updatedDisk = await getDisk(userId, newName);
-                            
+
                             const embed = new EmbedBuilder()
                                 .setColor(0xb03000)
                                 .setTitle('⚙️ disk settings updated')
@@ -888,7 +910,7 @@ module.exports = {
                         } else {
                             const files = await listDiskFiles(userId, diskName, '/');
                             const fileCount = files.filter(f => f.mime_type !== 'directory').length;
-                            
+
                             const embed = new EmbedBuilder()
                                 .setColor(0xb03000)
                                 .setTitle('⚙️ disk settings')
@@ -909,6 +931,79 @@ module.exports = {
                         return interaction.reply({
                             content: `❌ ${error.message}`,
                             ephemeral: true
+                        });
+                    }
+                }
+
+                case 'export': {
+                    const diskName = interaction.options.getString('disk');
+
+                    await interaction.deferReply();
+
+                    try {
+                        const exportData = await exportDisk(userId, diskName);
+                        const buffer = Buffer.from(exportData, 'utf8');
+
+                        const attachment = new AttachmentBuilder(buffer, {
+                            name: `${diskName}.weenfs`,
+                            description: `weenFS export of disk ${diskName}`
+                        });
+
+                        const embed = new EmbedBuilder()
+                            .setColor(0xb03000)
+                            .setTitle('📦 weenFS export complete')
+                            .setDescription(`successfully exported disk **${diskName}** as a weenFS file`)
+                            .addFields(
+                                { name: 'filename', value: `${diskName}.weenfs`, inline: true },
+                                { name: 'format', value: 'weenFS v1.0', inline: true }
+                            )
+                            .setFooter({ text: 'share this file to let others import your disk!' });
+
+                        return interaction.editReply({
+                            embeds: [embed],
+                            files: [attachment]
+                        });
+                    } catch (error) {
+                        return interaction.editReply({
+                            content: `❌ ${error.message}`
+                        });
+                    }
+                }
+
+                case 'import': {
+                    const diskName = interaction.options.getString('name');
+                    const attachment = interaction.options.getAttachment('file');
+
+                    if (!attachment.name.endsWith('.weenfs')) {
+                        return interaction.reply({
+                            content: '❌ please upload a valid .weenfs file',
+                            ephemeral: true
+                        });
+                    }
+
+                    await interaction.deferReply();
+
+                    try {
+                        const response = await fetch(attachment.url);
+                        const exportData = await response.text();
+
+                        const result = await importDisk(userId, diskName, exportData);
+
+                        const embed = new EmbedBuilder()
+                            .setColor(0xb03000)
+                            .setTitle('📥 weenFS import complete')
+                            .setDescription(`successfully imported **${result.originalName}** as disk **${diskName}**`)
+                            .addFields(
+                                { name: 'files imported', value: result.fileCount.toString(), inline: true },
+                                { name: 'disk size', value: `${result.sizeMB}MB`, inline: true },
+                                { name: 'original name', value: result.originalName, inline: true }
+                            )
+                            .setFooter({ text: 'your weenFS disk is ready to use!' });
+
+                        return interaction.editReply({ embeds: [embed] });
+                    } catch (error) {
+                        return interaction.editReply({
+                            content: `❌ ${error.message}`
                         });
                     }
                 }
