@@ -10,7 +10,8 @@ const {
     deleteFileFromDisk,
     createDirectory,
     moveFile,
-    copyFile
+    copyFile,
+    updateDiskSettings
 } = require('../modules/db.js');
 
 function formatBytes(bytes) {
@@ -237,7 +238,19 @@ module.exports = {
                 .addStringOption(option =>
                     option.setName('dest_path')
                         .setDescription('destination file path')
-                        .setRequired(true))),
+                        .setRequired(true)))
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('settings')
+                .setDescription('edit disk settings')
+                .addStringOption(option =>
+                    option.setName('disk')
+                        .setDescription('name of the disk to edit')
+                        .setRequired(true))
+                .addStringOption(option =>
+                    option.setName('newname')
+                        .setDescription('new name for the disk')
+                        .setRequired(false))),
 
     async execute(interaction) {
         const subcommand = interaction.options.getSubcommand();
@@ -837,6 +850,65 @@ module.exports = {
                     } catch (error) {
                         return interaction.editReply({
                             content: `❌ ${error.message}`
+                        });
+                    }
+                }
+
+                case 'settings': {
+                    const diskName = interaction.options.getString('disk');
+                    const newName = interaction.options.getString('newname');
+
+                    try {
+                        const disk = await getDisk(userId, diskName);
+                        if (!disk) {
+                            return interaction.reply({
+                                content: `❌ disk **${diskName}** not found`,
+                                ephemeral: true
+                            });
+                        }
+
+                        if (newName) {
+                            const updateData = { disk_name: newName };
+                            await updateDiskSettings(userId, diskName, updateData);
+                            
+                            const updatedDisk = await getDisk(userId, newName);
+                            
+                            const embed = new EmbedBuilder()
+                                .setColor(0xb03000)
+                                .setTitle('⚙️ disk settings updated')
+                                .setDescription(`successfully renamed **${diskName}** to **${newName}**`)
+                                .addFields(
+                                    { name: 'disk name', value: updatedDisk.disk_name, inline: true },
+                                    { name: 'size used', value: `${updatedDisk.size_mb}MB / 100MB`, inline: true },
+                                    { name: 'created', value: new Date(updatedDisk.created_at).toLocaleDateString(), inline: true }
+                                )
+                                .setFooter({ text: `disk id: ${updatedDisk.id}` });
+
+                            return interaction.reply({ embeds: [embed] });
+                        } else {
+                            const files = await listDiskFiles(userId, diskName, '/');
+                            const fileCount = files.filter(f => f.mime_type !== 'directory').length;
+                            
+                            const embed = new EmbedBuilder()
+                                .setColor(0xb03000)
+                                .setTitle('⚙️ disk settings')
+                                .setDescription(`current settings for disk **${diskName}**`)
+                                .addFields(
+                                    { name: 'disk name', value: disk.disk_name, inline: true },
+                                    { name: 'size used', value: `${disk.size_mb}MB / 100MB`, inline: true },
+                                    { name: 'files', value: fileCount.toString(), inline: true },
+                                    { name: 'created', value: new Date(disk.created_at).toLocaleDateString(), inline: true },
+                                    { name: 'last updated', value: new Date(disk.updated_at).toLocaleDateString(), inline: true },
+                                    { name: 'disk id', value: disk.id.toString(), inline: true }
+                                )
+                                .setFooter({ text: 'use /disks settings disk:[name] newname:[new_name] to rename' });
+
+                            return interaction.reply({ embeds: [embed] });
+                        }
+                    } catch (error) {
+                        return interaction.reply({
+                            content: `❌ ${error.message}`,
+                            ephemeral: true
                         });
                     }
                 }

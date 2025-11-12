@@ -1168,7 +1168,7 @@ async function copyFile(userId, sourceDisk, destDisk, sourcePath, destPath) {
     try {
         const sourceDiskData = await getDisk(userId, sourceDisk);
         const destDiskData = await getDisk(userId, destDisk);
-        
+
         if (!sourceDiskData) {
             throw new Error('Source disk not found');
         }
@@ -1239,6 +1239,42 @@ async function copyFile(userId, sourceDisk, destDisk, sourcePath, destPath) {
     }
 }
 
+async function updateDiskSettings(userId, currentDiskName, newSettings) {
+    if (!supabase) {
+        throw new Error('Supabase not initialized');
+    }
+
+    try {
+        const disk = await getDisk(userId, currentDiskName);
+        if (!disk) {
+            throw new Error('Disk not found');
+        }
+
+        if (newSettings.disk_name && newSettings.disk_name !== currentDiskName) {
+            const existingDisk = await getDisk(userId, newSettings.disk_name);
+            if (existingDisk) {
+                throw new Error('A disk with that name already exists');
+            }
+        }
+
+        const updateData = {
+            updated_at: new Date().toISOString(),
+            ...newSettings
+        };
+
+        const { error } = await supabase
+            .from('virtual_disks')
+            .update(updateData)
+            .eq('user_id', userId)
+            .eq('disk_name', currentDiskName);
+
+        if (error) throw error;
+        return true;
+    } catch (err) {
+        console.error('Error updating disk settings:', err);
+        throw err;
+    }
+}
 
 module.exports = {
     db: supabase,
@@ -1285,5 +1321,6 @@ module.exports = {
     deleteFileFromDisk,
     createDirectory,
     moveFile,
-    copyFile
+    copyFile,
+    updateDiskSettings
 };
