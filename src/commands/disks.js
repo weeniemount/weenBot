@@ -264,15 +264,12 @@ module.exports = {
         .addSubcommand(subcommand =>
             subcommand
                 .setName('import')
-                .setDescription('import a weenFS disk from a file')
+                .setDescription('import a weenFS disk from an uploaded .weenfs file')
                 .addStringOption(option =>
                     option.setName('name')
                         .setDescription('name for the imported disk')
-                        .setRequired(true))
-                .addAttachment(option =>
-                    option.setName('file')
-                        .setDescription('weenFS disk file to import')
                         .setRequired(true))),
+
 
     async execute(interaction) {
         const subcommand = interaction.options.getSubcommand();
@@ -957,7 +954,7 @@ module.exports = {
                                 { name: 'filename', value: `${diskName}.weenfs`, inline: true },
                                 { name: 'format', value: 'weenFS v1.0', inline: true }
                             )
-                            .setFooter({ text: 'share this file to let others import your disk!' });
+                            .setFooter({ text: 'save this file as a backup or share it with others!' });
 
                         return interaction.editReply({
                             embeds: [embed],
@@ -972,40 +969,8 @@ module.exports = {
 
                 case 'import': {
                     const diskName = interaction.options.getString('name');
-                    const attachment = interaction.options.getAttachment('file');
 
-                    if (!attachment.name.endsWith('.weenfs')) {
-                        return interaction.reply({
-                            content: '❌ please upload a valid .weenfs file',
-                            ephemeral: true
-                        });
-                    }
-
-                    await interaction.deferReply();
-
-                    try {
-                        const response = await fetch(attachment.url);
-                        const exportData = await response.text();
-
-                        const result = await importDisk(userId, diskName, exportData);
-
-                        const embed = new EmbedBuilder()
-                            .setColor(0xb03000)
-                            .setTitle('📥 weenFS import complete')
-                            .setDescription(`successfully imported **${result.originalName}** as disk **${diskName}**`)
-                            .addFields(
-                                { name: 'files imported', value: result.fileCount.toString(), inline: true },
-                                { name: 'disk size', value: `${result.sizeMB}MB`, inline: true },
-                                { name: 'original name', value: result.originalName, inline: true }
-                            )
-                            .setFooter({ text: 'your weenFS disk is ready to use!' });
-
-                        return interaction.editReply({ embeds: [embed] });
-                    } catch (error) {
-                        return interaction.editReply({
-                            content: `❌ ${error.message}`
-                        });
-                    }
+                    return interaction.reply("TBD");
                 }
 
                 default:
