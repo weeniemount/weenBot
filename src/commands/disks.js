@@ -948,7 +948,32 @@ module.exports = {
                     await interaction.deferReply({ ephemeral });
 
                     try {
+                        const progressEmbed1 = new EmbedBuilder()
+                            .setColor(0xb03000)
+                            .setTitle('📦 exporting weenFS disk')
+                            .setDescription(`fetching files from disk **${diskName}**...`)
+                            .addFields({ name: 'progress', value: '🔄 fetching files...', inline: true });
+
+                        await interaction.editReply({ embeds: [progressEmbed1] });
+
+                        const progressEmbed2 = new EmbedBuilder()
+                            .setColor(0xb03000)
+                            .setTitle('📦 exporting weenFS disk')
+                            .setDescription(`converting disk **${diskName}** to .weenfs format...`)
+                            .addFields({ name: 'progress', value: '🔄 creating .weenfs file...', inline: true });
+
+                        await interaction.editReply({ embeds: [progressEmbed2] });
+
                         const exportData = await exportDisk(userId, diskName);
+
+                        const progressEmbed3 = new EmbedBuilder()
+                            .setColor(0xb03000)
+                            .setTitle('📦 exporting weenFS disk')
+                            .setDescription(`preparing **${diskName}.weenfs** for upload to discord...`)
+                            .addFields({ name: 'progress', value: '🔄 uploading to discord...', inline: true });
+
+                        await interaction.editReply({ embeds: [progressEmbed3] });
+
                         const buffer = Buffer.from(exportData, 'utf8');
 
                         const attachment = new AttachmentBuilder(buffer, {
@@ -962,7 +987,8 @@ module.exports = {
                             .setDescription(`successfully exported disk **${diskName}** as a weenFS file`)
                             .addFields(
                                 { name: 'filename', value: `${diskName}.weenfs`, inline: true },
-                                { name: 'format', value: 'weenFS v1.0', inline: true }
+                                { name: 'format', value: 'weenFS v1.0', inline: true },
+                                { name: 'size', value: formatBytes(buffer.length), inline: true }
                             )
                             .setFooter({ text: 'save this file as a backup or share it with others!' });
 
