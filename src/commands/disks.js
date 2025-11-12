@@ -140,7 +140,11 @@ module.exports = {
                 .addStringOption(option =>
                     option.setName('path')
                         .setDescription('path to the file')
-                        .setRequired(true)))
+                        .setRequired(true))
+                .addBooleanOption(option =>
+                    option.setName('ephemeral')
+                        .setDescription('make the download response visible only to you')
+                        .setRequired(false)))
         .addSubcommand(subcommand =>
             subcommand
                 .setName('ls')
@@ -260,7 +264,11 @@ module.exports = {
                 .addStringOption(option =>
                     option.setName('disk')
                         .setDescription('name of the disk to export')
-                        .setRequired(true)))
+                        .setRequired(true))
+                .addBooleanOption(option =>
+                    option.setName('ephemeral')
+                        .setDescription('make the export response visible only to you')
+                        .setRequired(false)))
         .addSubcommand(subcommand =>
             subcommand
                 .setName('import')
@@ -570,10 +578,11 @@ module.exports = {
                 case 'download': {
                     const diskName = interaction.options.getString('disk');
                     let filePath = interaction.options.getString('path');
+                    const ephemeral = interaction.options.getBoolean('ephemeral') ?? false;
 
                     filePath = formatPath(filePath);
 
-                    await interaction.deferReply();
+                    await interaction.deferReply({ ephemeral });
 
                     try {
                         const progressEmbed = new EmbedBuilder()
@@ -934,8 +943,9 @@ module.exports = {
 
                 case 'export': {
                     const diskName = interaction.options.getString('disk');
+                    const ephemeral = interaction.options.getBoolean('ephemeral') ?? false;
 
-                    await interaction.deferReply();
+                    await interaction.deferReply({ ephemeral });
 
                     try {
                         const exportData = await exportDisk(userId, diskName);
