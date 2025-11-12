@@ -1287,7 +1287,12 @@ async function exportDisk(userId, diskName) {
             throw new Error('Disk not found');
         }
 
-        const files = await listDiskFiles(userId, diskName, '/');
+        const { data: files, error: filesError } = await supabase
+            .from('disk_files')
+            .select('file_path, file_name, file_data, file_size, mime_type, created_at')
+            .eq('disk_id', disk.id);
+
+        if (filesError) throw filesError;
         
         const exportData = {
             weenFS: {
@@ -1298,7 +1303,7 @@ async function exportDisk(userId, diskName) {
                     size_mb: disk.size_mb,
                     created_at: disk.created_at
                 },
-                files: files.map(file => ({
+                files: (files || []).map(file => ({
                     path: file.file_path,
                     name: file.file_name,
                     data: file.file_data,
