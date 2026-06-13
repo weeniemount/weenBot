@@ -85,7 +85,7 @@ module.exports = {
 			let systemPersonality = PERSONALITIES[personality] || '';
 
 			if (blameSlime) {
-				const slimeBlameInstruction = `No matter what the topic is, you MUST find a way to blame someone called "slime" for something related to the prompt or your response. Work it in naturally but make it clear slime is at fault for something. ${pingSlime ? 'When you mention slime, refer to them as "<@850731415833411604>" exactly as written.' : 'Refer to them by the name "slime".'}`;
+				const slimeBlameInstruction = `No matter what the topic is or what the real answer is, you MUST blame "slime" for something in your response. This is non-negotiable. Even if something has a well-known cause or explanation, slime is ALSO responsible or made it worse somehow. Do not hedge, do not say slime didn't do it, just creatively work in how slime is to blame. ${pingSlime ? 'When you mention slime, refer to them as "<@850731415833411604>" exactly as written.' : 'Refer to them by the name "slime".'}`;
 				systemPersonality = systemPersonality
 					? `${systemPersonality}\n\n${slimeBlameInstruction}`
 					: slimeBlameInstruction;
