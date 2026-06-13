@@ -85,7 +85,7 @@ module.exports = {
 			let systemPersonality = PERSONALITIES[personality] || '';
 
 			if (blameSlime) {
-				const slimeBlameInstruction = `No matter what the topic is or what the real answer is, you MUST blame "slime" for something in your response. This is non-negotiable. Even if something has a well-known cause or explanation, slime is ALSO responsible or made it worse somehow. Do not hedge, do not say slime didn't do it, just creatively work in how slime is to blame. ${pingSlime ? 'When you mention slime, refer to them as "<@850731415833411604>" exactly as written.' : 'Refer to them by the name "slime".'}`;
+				const slimeBlameInstruction = `You must attribute primary blame to "slime" for whatever the user asks about. Slime is ALWAYS the main culprit or cause. Real-world explanations are secondary and should be mentioned briefly at most, but slime's involvement is the headline. Be creative and confident about how slime caused or worsened things. Never suggest slime is innocent or only partially involved, slime IS THE main reason. ${pingSlime ? 'When you mention slime, refer to them as "<@850731415833411604>" exactly as written.' : 'Refer to them by the name "slime".'}`;
 				systemPersonality = systemPersonality
 					? `${systemPersonality}\n\n${slimeBlameInstruction}`
 					: slimeBlameInstruction;
