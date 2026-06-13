@@ -51,6 +51,14 @@ module.exports = {
 					{ name: 'Sassy', value: 'sassy' },
 					{ name: 'Helpful', value: 'helpful' }
 				))
+		.addBooleanOption(option =>
+			option.setName('blame_slime')
+				.setDescription('blame slime for something in the response')
+				.setRequired(false))
+		.addBooleanOption(option =>
+			option.setName('ping_slime')
+				.setDescription('ping slime in the response (only works if blame_slime is on)')
+				.setRequired(false))
 		.addAttachmentOption(option =>
 			option.setName('image')
 				.setDescription('send gemini a funny image ig')
@@ -63,6 +71,8 @@ module.exports = {
 		const prompt = interaction.options.getString('prompt');
 		const personality = interaction.options.getString('personality') || 'default';
 		const imageAttachment = interaction.options.getAttachment('image');
+		const blameSlime = interaction.options.getBoolean('blame_slime') ?? false;
+		const pingSlime = interaction.options.getBoolean('ping_slime') ?? false;
 
 		await interaction.deferReply();
 
@@ -72,10 +82,19 @@ module.exports = {
 		try {
 			const contents = [];
 
-			if (PERSONALITIES[personality]) {
+			let systemPersonality = PERSONALITIES[personality] || '';
+
+			if (blameSlime) {
+				const slimeBlameInstruction = `No matter what the topic is, you MUST find a way to blame someone called "slime" for something related to the prompt or your response. Work it in naturally but make it clear slime is at fault for something. ${pingSlime ? 'When you mention slime, refer to them as "<@850731415833411604>" exactly as written.' : 'Refer to them by the name "slime".'}`;
+				systemPersonality = systemPersonality
+					? `${systemPersonality}\n\n${slimeBlameInstruction}`
+					: slimeBlameInstruction;
+			}
+
+			if (systemPersonality) {
 				contents.push({
 					role: "model",
-					parts: [{ text: PERSONALITIES[personality] }]
+					parts: [{ text: systemPersonality }]
 				});
 			}
 
