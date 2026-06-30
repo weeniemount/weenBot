@@ -58,8 +58,8 @@ function updatePresence() {
     client.user.setPresence({
         activities: [
             {
-                name: `over ${client.guilds.cache.size} ween™ servers!`,
-                type: 3 // WATCHING
+                name: `Watching over ${client.guilds.cache.size} ween™ servers!`,
+                type: 3 // WATCHING, me when this literally doesnt do shit anymore
             }
         ],
         status: 'online'
